@@ -14,12 +14,26 @@ module.exports = {
     attendance: async (_, __, { user }) => {
       if (!user) throw new Error("Unauthorized");
       const res = await pool.query("SELECT * FROM attendance WHERE user_id=$1", [user.id]);
-      return res.rows;
+      return res.rows.map(row => ({
+    id: row.id,
+    userId: row.user_id,
+    checkIn: row.check_in,
+    checkOut: row.check_out
+  }));
     },
 leaveBalance: async (_, __, { user }) => {
       if (!user) throw new Error("Unauthorized");
       const res = await pool.query("SELECT * FROM leaves WHERE user_id=$1", [user.id]);
-      return res.rows[0];
+      if (!res.rows[0]) return null;
+      const row = res.rows[0];
+      return {
+        id: row.id,
+        userId: row.user_id,
+        paid: row.paid,
+        used: row.used,
+        casual: row.casual,
+        wfh: row.wfh
+      };
     },
   },
 
