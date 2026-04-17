@@ -12,5 +12,6 @@ export default function AdminView({ tab, currentUser }) {
   if (tab === "leaves") return <ManageLeaves />;
   if (tab === "applyLeave") return <EmpApplyLeave />;
   if(tab=="holidaymanagaer") return <HolidayManager />
+  // if (tab === "notifications") return <AdmNotifications />;
   return null;
 }

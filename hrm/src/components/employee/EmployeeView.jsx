@@ -1,6 +1,7 @@
 import EmpDashboard from "./EmpDashboard";
 import EmpAttendance from "./EmpAttendance";
 import EmpApplyLeave from "./EmpApplyLeave";
+import EmpNotifications from "./EmpNotifications";
 
 // components/employee/EmployeeView.jsx
 
@@ -9,5 +10,6 @@ export default function EmployeeView({ tab, currentUser }) {
   // Change "checkin" to "attendance" to match Sidebar.jsx
   if (tab === "attendance") return <EmpAttendance currentUser={currentUser} />; 
   if (tab === "applyLeave") return <EmpApplyLeave />;
+  if (tab === "notifications") return <EmpNotifications />;
   return null;
 }

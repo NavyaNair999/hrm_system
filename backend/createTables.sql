@@ -25,3 +25,24 @@ CREATE TABLE IF NOT EXISTS leaves (
 );
 
 -- leave_requests is already created in resolvers.js
+
+
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  message TEXT,
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS employee_working_hours (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER UNIQUE REFERENCES users(id),
+  monday VARCHAR(50),
+  tuesday VARCHAR(50),
+  wednesday VARCHAR(50),
+  thursday VARCHAR(50),
+  friday VARCHAR(50),
+  saturday VARCHAR(50)
+);

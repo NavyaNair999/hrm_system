@@ -189,6 +189,22 @@ module.exports = {
         saturday: map["saturday"] || null,
       };
     },
+
+    notifications: async (_, __, { user }) => {
+  if (!user) throw new Error("Unauthorized");
+
+  const res = await pool.query(
+    "SELECT * FROM notifications WHERE user_id=$1 ORDER BY created_at DESC",
+    [user.id]
+  );
+
+  return res.rows.map(n => ({
+    id: n.id,
+    message: n.message,
+    isRead: n.is_read,
+    createdAt: n.created_at.toISOString(),
+  }));
+},
   },
 
   Mutation: {
@@ -326,6 +342,20 @@ module.exports = {
     );
   }
 
+  if (status === "Approved" && leave.status !== "Approved") {
+  await pool.query(
+    "UPDATE leaves SET used = used + $1 WHERE user_id = $2",
+    [leave.days, leave.user_id]
+  );
+}
+
+//  Create notification
+const msg = `Your leave request has been ${status}`;
+await pool.query(
+  "INSERT INTO notifications (user_id, message) VALUES ($1, $2)",
+  [leave.user_id, msg]
+);
+
   return `Leave ${status}`;
 },
 
@@ -380,5 +410,18 @@ module.exports = {
         return "Holiday added";
       }
     },
+
+    
+
+markNotificationRead: async (_, { id }, { user }) => {
+  if (!user) throw new Error("Unauthorized");
+
+  await pool.query(
+    "UPDATE notifications SET is_read=true WHERE id=$1 AND user_id=$2",
+    [id, user.id]
+  );
+
+  return "Marked as read";
+}
   },
 };

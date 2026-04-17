@@ -53,6 +53,13 @@ module.exports = gql`
     saturday: String
   }
 
+  type Notification {
+  id: ID!
+  message: String
+  isRead: Boolean
+  createdAt: String
+}
+
   type Query {
     me: User
     attendance: [Attendance]
@@ -61,7 +68,8 @@ module.exports = gql`
     allLeaves: [LeaveRequest]
     holidays: [Holiday]
     workingHours: WorkingHours
-  }
+    notifications: [Notification]
+    }
 
   type Mutation {
     login(username: String!, password: String!): String
@@ -89,5 +97,7 @@ module.exports = gql`
     setLeave(userId: ID!, paid: Int, casual: Int, wfh: Int): String
 
     toggleHoliday(date: String!, description: String): String
+
+    markNotificationRead(id: ID!): String
   }
 `;
