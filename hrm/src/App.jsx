@@ -98,9 +98,11 @@ function AppInner() {
   }
 
   function handleLogout() {
+    localStorage.removeItem("hrm_token"); 
     setToken("");
     setLoginForm({ username: "", password: "" });
     client.clearStore();
+    window.location.reload();
   }
 
   // Loading state while checking existing session
