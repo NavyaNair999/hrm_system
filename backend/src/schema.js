@@ -7,16 +7,17 @@ module.exports = gql`
     role: String!
   }
 
-  type Attendance {
-    id: ID!
-    userId: ID!
-    username: String
-    date: String
-    checkIn: String
-    checkOut: String
-    hoursWorked: String
-    isHoliday: Boolean
-  }
+type Attendance {
+  id: ID!
+  userId: ID
+  username: String
+  date: String
+  checkIn: String
+  checkOut: String
+  hoursWorked: String
+  isHoliday: Boolean
+}
+
 
   type LeaveBalance {
     id: ID!
@@ -87,8 +88,8 @@ module.exports = gql`
   saturday: String
 ): String
 
-    checkIn: String
-    checkOut: String
+    checkIn: Attendance
+    checkOut: Attendance
 
     applyLeave(type: String!, startDate: String!, endDate: String!, days: Int!, reason: String!): String
     updateLeaveStatus(leaveId: ID!, status: String!): String
