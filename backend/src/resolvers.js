@@ -204,15 +204,49 @@ module.exports = {
       return jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET);
     },
 
-    createUser: async (_, { username, password, role }, { user }) => {
-      if (!user || user.role !== "admin") throw new Error("Only admin");
-      const hash = await bcrypt.hash(password, 10);
-      await pool.query(
-        "INSERT INTO users (username, password, role) VALUES ($1,$2,$3)",
-        [username, hash, role]
-      );
-      return "User created";
-    },
+    createUser: async (
+  _,
+  {
+    username,
+    password,
+    role,
+    paidLeaves,
+    monday,
+    tuesday,
+    wednesday,
+    thursday,
+    friday,
+    saturday,
+  },
+  { user }
+) => {
+  if (!user || user.role !== "admin") throw new Error("Only admin");
+
+  const hash = await bcrypt.hash(password, 10);
+
+  const result = await pool.query(
+    "INSERT INTO users (username, password, role) VALUES ($1,$2,$3) RETURNING id",
+    [username, hash, role]
+  );
+
+  const userId = result.rows[0].id;
+
+  //  Insert leave balance
+  await pool.query(
+    "INSERT INTO leaves (user_id, paid, used, casual, wfh) VALUES ($1, $2, 0, 0, 0)",
+    [userId, paidLeaves]
+  );
+
+  //  Insert working hours per employee
+  await pool.query(
+    `INSERT INTO employee_working_hours
+     (user_id, monday, tuesday, wednesday, thursday, friday, saturday)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+    [userId, monday, tuesday, wednesday, thursday, friday, saturday]
+  );
+
+  return "User created successfully";
+},
 
     checkIn: async (_, __, { user }) => {
       if (!user) throw new Error("Unauthorized");
@@ -264,14 +298,36 @@ module.exports = {
     },
 
     updateLeaveStatus: async (_, { leaveId, status }, { user }) => {
-      if (!user || user.role !== "admin") throw new Error("Only admin");
-      if (!["Approved", "Rejected"].includes(status)) throw new Error("Invalid status");
-      await pool.query(
-        "UPDATE leave_requests SET status=$1 WHERE id=$2",
-        [status, leaveId]
-      );
-      return `Leave ${status}`;
-    },
+  if (!user || user.role !== "admin") throw new Error("Only admin");
+  if (!["Approved", "Rejected"].includes(status)) throw new Error("Invalid status");
+
+  // Get existing leave
+  const existing = await pool.query(
+    "SELECT user_id, days, status FROM leave_requests WHERE id=$1",
+    [leaveId]
+  );
+
+  const leave = existing.rows[0];
+  if (!leave) throw new Error("Leave not found");
+
+  // Update leave status
+  await pool.query(
+    "UPDATE leave_requests SET status=$1 WHERE id=$2",
+    [status, leaveId]
+  );
+
+  // ONLY update used leaves if:
+  // - new status = Approved
+  // - previous status was NOT Approved
+  if (status === "Approved" && leave.status !== "Approved") {
+    await pool.query(
+      "UPDATE leaves SET used = used + $1 WHERE user_id = $2",
+      [leave.days, leave.user_id]
+    );
+  }
+
+  return `Leave ${status}`;
+},
 
     // Per-day working hours for Mon–Sat
     setWorkingHours: async (_, args, { user }) => {

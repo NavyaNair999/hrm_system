@@ -2,9 +2,37 @@ import { useState } from "react";
 import { gql } from "@apollo/client";
 import { useMutation } from "@apollo/client/react";
 
+// const CREATE_USER = gql`
+//   mutation CreateUser($username: String!, $password: String!, $role: String!) {
+//     createUser(username: $username, password: $password, role: $role)
+//   }
+// `;
+
 const CREATE_USER = gql`
-  mutation CreateUser($username: String!, $password: String!, $role: String!) {
-    createUser(username: $username, password: $password, role: $role)
+  mutation CreateUser(
+    $username: String!
+    $password: String!
+    $role: String!
+    $paidLeaves: Int!
+    $monday: String
+    $tuesday: String
+    $wednesday: String
+    $thursday: String
+    $friday: String
+    $saturday: String
+  ) {
+    createUser(
+      username: $username
+      password: $password
+      role: $role
+      paidLeaves: $paidLeaves
+      monday: $monday
+      tuesday: $tuesday
+      wednesday: $wednesday
+      thursday: $thursday
+      friday: $friday
+      saturday: $saturday
+    )
   }
 `;
 
@@ -14,7 +42,19 @@ const FIELDS = [
 ];
 
 export default function AddEmployee() {
-  const [form, setForm] = useState({ username: "", password: "", role: "employee" });
+  // const [form, setForm] = useState({ username: "", password: "", role: "employee" });
+  const [form, setForm] = useState({
+  username: "",
+  password: "",
+  role: "employee",
+  paidLeaves: 10,
+  monday: "10-6",
+  tuesday: "10-6",
+  wednesday: "10-6",
+  thursday: "10-6",
+  friday: "10-6",
+  saturday: "10-2",
+});
   const [success, setSuccess] = useState("");
   const [errors, setErrors] = useState({});
 
@@ -40,6 +80,13 @@ export default function AddEmployee() {
           username: form.username,
           password: form.password,
           role: form.role,
+          paidLeaves: form.paidLeaves,
+          monday: form.monday,
+          tuesday: form.tuesday,
+          wednesday: form.wednesday,
+          thursday: form.thursday,
+          friday: form.friday,
+          saturday: form.saturday,
         },
       });
       setSuccess(`Employee "${form.username}" added successfully!`);
@@ -121,6 +168,28 @@ export default function AddEmployee() {
               <option value="admin">Admin</option>
             </select>
           </div>
+          <div className="field">
+            <label>Paid Leaves</label>
+          <input
+            type="number"
+            value={form.paidLeaves}
+            onChange={(e) =>
+            setForm((s) => ({ ...s, paidLeaves: Number(e.target.value) }))
+            }
+          />
+          </div>
+          {["monday","tuesday","wednesday","thursday","friday","saturday"].map(day => (
+  <div className="field" key={day}>
+    <label>{day.charAt(0).toUpperCase() + day.slice(1)}</label>
+    <input
+      placeholder="e.g. 10-6"
+      value={form[day]}
+      onChange={(e) =>
+        setForm((s) => ({ ...s, [day]: e.target.value }))
+      }
+    />
+  </div>
+))}
 
           <button
             className="btn-primary"

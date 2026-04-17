@@ -18,7 +18,7 @@ export default function EmpDashboard({ currentUser }) {
   const { data: balanceData, loading } = useQuery(LEAVE_BALANCE);
   const balance = balanceData?.leaveBalance;
 
-  const totalLeaves = (balance?.paid ?? 0) + (balance?.casual ?? 0) + (balance?.wfh ?? 0);
+  const totalLeaves = balance?.paid ?? 0;
   const usedLeaves = balance?.used ?? 0;
   const remainingLeaves = Math.max(0, totalLeaves - usedLeaves);
 
@@ -46,10 +46,10 @@ export default function EmpDashboard({ currentUser }) {
             <div className="stat-label">Remaining Leaves</div>
             <div className="stat-value green">{remainingLeaves}</div>
           </div>
-          <div className="stat-card">
+          {/* <div className="stat-card">
             <div className="stat-label">WFH Days</div>
             <div className="stat-value gray">{balance?.wfh ?? 0}</div>
-          </div>
+          </div> */}
         </div>
       )}
     </div>
