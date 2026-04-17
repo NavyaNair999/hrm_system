@@ -1,5 +1,8 @@
 const pool = require("./src/db");
 const bcrypt = require("bcrypt");
+require("dotenv").config();
+
+console.log("DB URL:", process.env.DATABASE_URL);
 
 async function createAdmin() {
   const username = "admin";

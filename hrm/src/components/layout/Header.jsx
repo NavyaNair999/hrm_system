@@ -17,9 +17,9 @@ export default function Header({ user, onLogout, isAdmin, onHamburger }) {
         <button className="hamburger" onClick={onHamburger}>
           ☰
         </button>
-        <div className="hrm-brand-logo">HR</div>
+        <div className="hrm-brand-logo">IV</div>
         <div>
-          <div className="hrm-brand-name">HRM Portal</div>
+          <div className="hrm-brand-name">INFIDHI VENTURES PVT. LTD.</div>
           <div className="hrm-brand-sub">
             {isAdmin ? "Admin Dashboard" : "Employee Dashboard"}
           </div>
