@@ -100,5 +100,6 @@ type Attendance {
     toggleHoliday(date: String!, description: String): String
 
     markNotificationRead(id: ID!): String
+    changePassword(newPassword: String!): String
   }
 `;

@@ -3,6 +3,7 @@
 /* ──────────────────────────────────────────────────────────────────────────── */
 
 :root {
+  color-scheme: light;
   /* ── Colors ── */
   --color-primary: #dc2626;
   --color-primary-dark: #b91c1c;
@@ -59,6 +60,7 @@
 
 /* ── Dark Theme ── */
 .hrm-root.dark-theme {
+  color-scheme: dark;
   --color-primary: #ef4444;
   --color-primary-dark: #dc2626;
   --color-primary-light: #f87171;

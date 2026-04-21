@@ -331,7 +331,7 @@ checkOut: async (_, __, { user }) => {
 
   // Get existing leave
   const existing = await pool.query(
-    "SELECT user_id, days, status FROM leave_requests WHERE id=$1",
+    "SELECT user_id, days, status, start_date, end_date FROM leave_requests WHERE id=$1",
     [leaveId]
   );
 
@@ -354,19 +354,28 @@ checkOut: async (_, __, { user }) => {
     );
   }
 
-  if (status === "Approved" && leave.status !== "Approved") {
-  await pool.query(
-    "UPDATE leaves SET used = used + $1 WHERE user_id = $2",
-    [leave.days, leave.user_id]
-  );
-}
+  const formatLeaveMessage = (startDate, endDate, statusText) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const startDay = start.getDate();
+    const endDay = end.getDate();
+    const startMonth = start.toLocaleString("en-US", { month: "long" });
+    const endMonth = end.toLocaleString("en-US", { month: "long" });
+    const startYear = start.getFullYear();
+    const endYear = end.getFullYear();
 
-//  Create notification
-const msg = `Your leave request has been ${status}`;
-await pool.query(
-  "INSERT INTO notifications (user_id, message) VALUES ($1, $2)",
-  [leave.user_id, msg]
-);
+    if (startMonth === endMonth && startYear === endYear) {
+      return `Your leave request from ${startDay}-${endDay} ${startMonth} ${startYear} has been ${statusText.toLowerCase()}.`;
+    }
+
+    return `Your leave request from ${startDay} ${startMonth} ${startYear} to ${endDay} ${endMonth} ${endYear} has been ${statusText.toLowerCase()}.`;
+  };
+
+  const msg = formatLeaveMessage(leave.start_date, leave.end_date, status);
+  await pool.query(
+    "INSERT INTO notifications (user_id, message) VALUES ($1, $2)",
+    [leave.user_id, msg]
+  );
 
   return `Leave ${status}`;
 },
@@ -424,6 +433,17 @@ markNotificationRead: async (_, { id }, { user }) => {
   );
 
   return "Marked as read";
-}
+},
+
+    changePassword: async (_, { newPassword }, { user }) => {
+      if (!user) throw new Error("Unauthorized");
+      if (newPassword.length < 6) throw new Error("Password must be at least 6 characters");
+      const hash = await bcrypt.hash(newPassword, 10);
+      await pool.query(
+        "UPDATE users SET password = $1 WHERE id = $2",
+        [hash, user.id]
+      );
+      return "Password updated successfully";
+    },
   },
 };

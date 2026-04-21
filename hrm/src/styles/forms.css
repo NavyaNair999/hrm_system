@@ -283,3 +283,9 @@ textarea {
 .login-card input:-webkit-autofill::first-line {
   font-family: 'Inter', sans-serif !important;
 }
+
+/* ── Date Picker Calendar Icon Fix ── */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+}

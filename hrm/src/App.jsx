@@ -159,12 +159,14 @@ function AppInner() {
   }
 
   return (
-    <div className="hrm-root">
+    <div className={`hrm-root ${isDarkTheme ? "dark-theme" : ""}`}>
       <Header
         user={{ ...currentUser, name: currentUser.username }}
         onLogout={handleLogout}
         isAdmin={isAdmin}
         onHamburger={() => setSidebarOpen((o) => !o)}
+        onThemeToggle={toggleTheme}
+        isDarkTheme={isDarkTheme}
       />
       <div className="hrm-layout">
         <Sidebar
