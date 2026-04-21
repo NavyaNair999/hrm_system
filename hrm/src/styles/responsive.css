@@ -1,0 +1,342 @@
+/* ──────────────────────────────────────────────────────────────────────────── */
+/* RESPONSIVE DESIGN                                                           */
+/* ──────────────────────────────────────────────────────────────────────────── */
+
+/* ── Tablet & Small Desktop (768px) ── */
+@media (max-width: 1024px) {
+  .hrm-sidebar {
+    width: 220px;
+    min-width: 220px;
+  }
+
+  .hrm-main {
+    padding: var(--spacing-lg);
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Mobile Landscape (768px) ── */
+@media (max-width: 768px) {
+  .hrm-header {
+    padding: 0 var(--spacing-md);
+  }
+
+  .hrm-sidebar {
+    display: none;
+  }
+
+  .hrm-sidebar.mobile-open {
+    display: flex;
+    position: fixed;
+    left: 0;
+    top: 64px;
+    height: calc(100vh - 64px);
+    z-index: 200;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+    width: 260px;
+    flex-direction: column;
+  }
+
+  .hrm-main {
+    padding: var(--spacing-lg);
+  }
+
+  .hamburger {
+    display: flex !important;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-md);
+  }
+
+  .page-header h1 {
+    font-size: 20px;
+  }
+
+  .card {
+    padding: var(--spacing-md);
+  }
+
+  .two-col,
+  .three-col {
+    grid-template-columns: 1fr;
+  }
+
+  .login-card {
+    padding: var(--spacing-lg);
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  table {
+    font-size: 12px;
+  }
+
+  th,
+  td {
+    padding: 10px 8px;
+  }
+
+  .badge {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+}
+
+/* ── Mobile (480px) ── */
+@media (max-width: 480px) {
+  .hrm-header {
+    padding: 0 var(--spacing-sm);
+    height: 56px;
+  }
+
+  .hrm-brand {
+    gap: var(--spacing-sm);
+  }
+
+  .hrm-brand-logo {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .hrm-brand-name {
+    font-size: 14px;
+  }
+
+  .hrm-brand-sub {
+    font-size: 11px;
+  }
+
+  .hrm-header-right {
+    gap: var(--spacing-md);
+  }
+
+  .hrm-user-pill {
+    display: none;
+  }
+
+  .hrm-main {
+    padding: var(--spacing-md);
+  }
+
+  .page-header h1 {
+    font-size: 18px;
+  }
+
+  .page-header p {
+    font-size: 12px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+  }
+
+  .stat-card {
+    padding: var(--spacing-md);
+  }
+
+  .stat-value {
+    font-size: 24px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+  }
+
+  .card {
+    padding: var(--spacing-md);
+  }
+
+  .card-title {
+    font-size: 16px;
+  }
+
+  .login-card {
+    margin: var(--spacing-md);
+    padding: var(--spacing-lg);
+  }
+
+  .login-logo {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+
+  .login-title {
+    font-size: 22px;
+  }
+
+  .login-fields {
+    gap: var(--spacing-md);
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  input,
+  select,
+  textarea {
+    padding: 10px 12px;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+  }
+
+  .form-inline {
+    flex-direction: column;
+  }
+
+  .form-inline button {
+    margin-top: 0;
+    width: 100%;
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .form-actions button {
+    width: 100%;
+  }
+
+  table {
+    font-size: 11px;
+  }
+
+  th,
+  td {
+    padding: 8px 6px;
+  }
+
+  .week-table td {
+    min-height: 50px;
+    min-width: 60px;
+    padding: 8px 4px;
+  }
+
+  .badge {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .check-status-bar {
+    padding: var(--spacing-md);
+    gap: var(--spacing-md);
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .page-header {
+    margin-bottom: var(--spacing-lg);
+  }
+
+  h1 {
+    font-size: 1.25rem;
+  }
+
+  h2 {
+    font-size: 1.125rem;
+  }
+
+  h3 {
+    font-size: 1rem;
+  }
+
+  .hrm-layout {
+    min-height: calc(100vh - 56px);
+  }
+}
+
+/* ── Utility Classes for Responsiveness ── */
+.hide-mobile {
+  display: none;
+}
+
+.show-mobile {
+  display: block;
+}
+
+@media (min-width: 769px) {
+  .hide-mobile {
+    display: block;
+  }
+
+  .show-mobile {
+    display: none;
+  }
+
+  .hide-desktop {
+    display: none;
+  }
+
+  .show-desktop {
+    display: block;
+  }
+}
+
+/* ── Print Styles ── */
+@media print {
+  body {
+    background: white;
+  }
+
+  .hrm-header,
+  .hrm-sidebar,
+  .hamburger,
+  .theme-toggle,
+  .btn-logout {
+    display: none;
+  }
+
+  .hrm-main {
+    padding: 0;
+    margin: 0;
+  }
+
+  .card {
+    page-break-inside: avoid;
+  }
+
+  .table-wrap {
+    box-shadow: none;
+  }
+
+  table {
+    border-collapse: collapse;
+  }
+
+  th,
+  td {
+    border: 1px solid #ccc;
+  }
+}

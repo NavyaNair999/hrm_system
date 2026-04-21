@@ -50,6 +50,15 @@ function calcHours(checkIn, checkOut) {
   return diff > 0 ? diff.toFixed(2) : "0.00";
 }
 
+// pg returns DATE columns as JS Date at UTC midnight.
+// In IST (UTC+5:30), toISOString() shifts it to previous day.
+// Fix: add IST offset before calling toISOString().
+function pgDateToIST(d) {
+  if (!d) return null;
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  return new Date(d.getTime() + istOffset).toISOString().split("T")[0];
+}
+
 module.exports = {
   Query: {
     me: async (_, __, { user }) => {
@@ -77,9 +86,7 @@ module.exports = {
         id:          row.id,
         userId:      row.user_id,
         username:    row.username,
-        date:        row.attendance_date
-                       ? row.attendance_date.toISOString().split("T")[0]
-                       : null,
+        date:        pgDateToIST(row.attendance_date),
         checkIn:     row.check_in  ? row.check_in.toISOString()  : null,
         checkOut:    row.check_out ? row.check_out.toISOString() : null,
         hoursWorked: calcHours(row.check_in, row.check_out),
@@ -227,8 +234,11 @@ module.exports = {
     checkIn: async (_, __, { user }) => {
   if (!user) throw new Error("Unauthorized");
 
+  // Use IST date — CURRENT_DATE in Postgres uses UTC which gives wrong date for IST users
+  const istDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+
   const holiday = await pool.query(
-    "SELECT id FROM holidays WHERE holiday_date = CURRENT_DATE"
+    "SELECT id FROM holidays WHERE holiday_date = $1", [istDate]
   );
   if (holiday.rows.length > 0) {
     throw new Error("Today is a holiday");
@@ -243,7 +253,7 @@ module.exports = {
   const result = await pool.query(
     `
     INSERT INTO attendance (user_id, username, attendance_date, check_in)
-    VALUES ($1, $2, CURRENT_DATE, NOW())
+    VALUES ($1, $2, $3, NOW())
 
     ON CONFLICT (user_id, attendance_date)
     DO UPDATE SET check_in = COALESCE(attendance.check_in, EXCLUDED.check_in)
@@ -254,29 +264,31 @@ module.exports = {
       check_in,
       check_out
     `,
-    [user.id, username]
+    [user.id, username, istDate]
   );
 
   const row = result.rows[0];
 
   return {
-    id: row.id,
-    date: row.attendance_date,
-    checkIn: row.check_in ? row.check_in.toISOString() : null, // Fix: send full ISO string
+    id:       row.id,
+    date:     pgDateToIST(row.attendance_date),
+    checkIn:  row.check_in  ? row.check_in.toISOString()  : null,
     checkOut: row.check_out ? row.check_out.toISOString() : null,
-
   };
 },
 
 checkOut: async (_, __, { user }) => {
   if (!user) throw new Error("Unauthorized");
 
+  // Use IST date — same reason as checkIn
+  const istDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+
   const result = await pool.query(
     `
     UPDATE attendance
     SET check_out = NOW()
     WHERE user_id = $1
-      AND attendance_date = CURRENT_DATE
+      AND attendance_date = $2
       AND check_in IS NOT NULL
       AND check_out IS NULL
 
@@ -286,7 +298,7 @@ checkOut: async (_, __, { user }) => {
       check_in,
       check_out
     `,
-    [user.id]
+    [user.id, istDate]
   );
 
   if (result.rowCount === 0) {
@@ -296,10 +308,10 @@ checkOut: async (_, __, { user }) => {
   const row = result.rows[0];
 
   return {
-    id: row.id,
-    date: row.attendance_date,
-    checkIn: row.check_in?.toISOString(),
-    checkOut: row.check_out?.toISOString(),
+    id:       row.id,
+    date:     pgDateToIST(row.attendance_date),
+    checkIn:  row.check_in  ? row.check_in.toISOString()  : null,
+    checkOut: row.check_out ? row.check_out.toISOString() : null,
   };
 },
 

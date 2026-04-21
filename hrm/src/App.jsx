@@ -16,9 +16,15 @@ import AdminView from "./components/admin/AdminView";
 import EmployeeView from "./components/employee/EmployeeView";
 
 // ─── Apollo Client Setup ────────────────────────────────────────────────────
+// const httpLink = createHttpLink({
+//   uri: "https://hrm-system-20o3.onrender.com/graphql",
+// });
+
+
 const httpLink = createHttpLink({
-  uri: "http://localhost:4000/graphql",
+  uri: "http://localhost:4000/graphql", // Local server address
 });
+
 
 const authLink = setContext((_, { headers }) => {
   const token = localStorage.getItem("hrm_token");
@@ -59,6 +65,10 @@ function AppInner() {
   const [loginError, setLoginError] = useState("");
   const [tab, setTab] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDarkTheme, setIsDarkTheme] = useState(() => {
+    const saved = localStorage.getItem("hrm_theme");
+    return saved ? saved === "dark" : false;
+  });
 
   const [loginMutation] = useMutation(LOGIN);
 
@@ -75,6 +85,15 @@ function AppInner() {
     if (token) localStorage.setItem("hrm_token", token);
     else localStorage.removeItem("hrm_token");
   }, [token]);
+
+  // Persist theme preference
+  useEffect(() => {
+    localStorage.setItem("hrm_theme", isDarkTheme ? "dark" : "light");
+  }, [isDarkTheme]);
+
+  const toggleTheme = () => {
+    setIsDarkTheme((prev) => !prev);
+  };
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -130,8 +149,10 @@ function AppInner() {
         <LoginPage
           form={loginForm}
           setForm={setLoginForm}
-          onLogin={handleLogin}
+          onSubmit={handleLogin}
           error={loginError}
+          isDarkTheme={isDarkTheme}
+          onThemeToggle={toggleTheme}
         />
       </div>
     );
