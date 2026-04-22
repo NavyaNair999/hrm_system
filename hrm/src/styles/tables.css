@@ -1,0 +1,288 @@
+/* ──────────────────────────────────────────────────────────────────────────── */
+/* TABLE STYLES                                                                */
+/* ──────────────────────────────────────────────────────────────────────────── */
+
+.table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+thead {
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+th {
+  padding: 13px 16px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  user-select: none;
+}
+
+td {
+  padding: 13px 16px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:hover {
+  background: var(--bg-tertiary);
+  transition: background-color var(--transition-base);
+}
+
+tbody tr:active {
+  background: var(--border-light);
+}
+
+/* ── Table Variants ── */
+.table-compact td {
+  padding: 10px 12px;
+}
+
+.table-compact th {
+  padding: 10px 12px;
+}
+
+.table-spacious td {
+  padding: 16px 20px;
+}
+
+.table-spacious th {
+  padding: 16px 20px;
+}
+
+/* ── Badges ── */
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge-pending {
+  background: rgba(251, 191, 36, 0.15);
+  color: #b45309;
+}
+
+.badge-approved {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-success);
+}
+
+.badge-rejected {
+  background: rgba(220, 38, 38, 0.15);
+  color: var(--color-primary);
+}
+
+.badge-in {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-success);
+}
+
+.badge-out {
+  background: rgba(220, 38, 38, 0.15);
+  color: var(--color-primary);
+}
+
+.badge-active {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-success);
+}
+
+.badge-inactive {
+  background: rgba(156, 163, 175, 0.15);
+  color: var(--text-secondary);
+}
+
+.badge-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--color-warning);
+}
+
+.badge-info {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+
+/* ── Attendance Calendar ── */
+.cal-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+}
+
+.week-table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  background: var(--bg-primary);
+}
+
+.week-table th {
+  background: var(--bg-tertiary);
+  padding: 12px 10px;
+  font-size: 12px;
+  text-align: center;
+  color: var(--color-primary);
+  font-weight: 700;
+  border: 1px solid var(--border-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.week-table td {
+  padding: 12px 10px;
+  font-size: 13px;
+  text-align: center;
+  border: 1px solid var(--border-color);
+  vertical-align: top;
+  min-height: 70px;
+  min-width: 90px;
+  color: var(--text-primary);
+}
+
+.day-date {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.time-chip {
+  display: inline-block;
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-success);
+  border-radius: var(--radius-sm);
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  margin: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.time-chip.out {
+  background: rgba(220, 38, 38, 0.15);
+  color: var(--color-primary);
+}
+
+.today-col {
+  background: rgba(220, 38, 38, 0.05);
+}
+
+/* ── Check In Status Bar ── */
+.check-status-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  margin-bottom: var(--spacing-2xl);
+  flex-wrap: wrap;
+  box-shadow: var(--shadow-sm);
+}
+
+.cstatus-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  flex-shrink: 0;
+  transition: all var(--transition-base);
+}
+
+.cstatus-dot.active {
+  background: var(--color-success);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+  animation: pulse 2s infinite;
+}
+
+.cstatus-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cstatus-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.cstatus-spacer {
+  flex: 1;
+}
+
+/* ── Report Section ── */
+.report-preview {
+  background: var(--bg-tertiary);
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2xl) var(--spacing-lg);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+}
+
+.report-preview.has-data {
+  color: var(--text-primary);
+  text-align: left;
+  align-items: flex-start;
+  border-style: solid;
+  background: var(--bg-primary);
+}
+
+.report-name {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--color-primary);
+  margin-bottom: 6px;
+}
+
+.report-pos {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-md);
+}
+
+.report-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.report-row:last-child {
+  border: none;
+}

@@ -4,8 +4,8 @@ const ADMIN_ITEMS = [
   { id: "applyLeave", icon: "✉", label: "Apply Leave" },
   { id: "addEmployee", icon: "＋", label: "Add Employee" },
   { id: "leaves", icon: "📋", label: "Manage Leaves" },
-  { id: "holidaymanagaer", icon: "🌴", label: "Holiday Manager" },
-  // { id: "notifications", icon: "🔔", label: "Notifications" },
+  // { id: "holidaymanagaer", icon: "🌴", label: "Holiday Manager" },
+  { id: "settings", icon: "⚙", label: "Settings" },
 ];
 
 const EMPLOYEE_ITEMS = [

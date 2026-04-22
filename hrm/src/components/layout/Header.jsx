@@ -8,7 +8,7 @@ function initials(name) {
     .slice(0, 2);
 }
 
-export default function Header({ user, onLogout, isAdmin, onHamburger }) {
+export default function Header({ user, onLogout, isAdmin, onHamburger, onThemeToggle, isDarkTheme }) {
   const displayName = user?.username || user?.name || "User";
 
   return (
@@ -26,6 +26,15 @@ export default function Header({ user, onLogout, isAdmin, onHamburger }) {
         </div>
       </div>
       <div className="hrm-header-right">
+        {onThemeToggle && (
+          <button 
+            className="theme-toggle" 
+            onClick={onThemeToggle}
+            title={isDarkTheme ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {isDarkTheme ? "☀️" : "🌙"}
+          </button>
+        )}
         <div className="hrm-user-pill">
           <div className="hrm-avatar">{initials(displayName)}</div>
           {displayName}

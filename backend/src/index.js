@@ -24,7 +24,13 @@ async function startServer() {
     context: ({ req }) => ({ user: getUser(req) }),
   });
 await server.start();
-  server.applyMiddleware({ app });
+ server.applyMiddleware({ 
+    app, 
+    cors: {
+      origin: ["http://localhost:5173", "http://localhost:4000"],
+      credentials: true
+    }
+  });
 
   app.listen(process.env.PORT, () => {
     console.log(`Server running on port ${process.env.PORT}`);
