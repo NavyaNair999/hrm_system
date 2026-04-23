@@ -1,4 +1,3 @@
-// components/AdminDashboard.jsx
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import AttendancePanel from "../AttendancePanel";
@@ -46,12 +45,6 @@ export default function AdminDashboard({ currentUser }) {
             <div className="stat-label">Remaining Leaves</div>
             <div className="stat-value green">{remainingLeaves}</div>
           </div>
-          {/* <div className="stat-card">
-            <div className="stat-label">Paid / Casual / WFH</div>
-            <div className="stat-value gray" style={{ fontSize: 15 }}>
-              {balance?.paid || 0} / {balance?.casual || 0} / {balance?.wfh || 0}
-            </div>
-          </div> */}
         </div>
       )}
 

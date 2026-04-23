@@ -1,3 +1,4 @@
+// This file defines the GraphQL schema for the HRM system, including types for users, attendance records, leave balances, leave requests, holidays, working hours, and notifications. It also defines the queries and mutations that can be performed on these types.
 const { gql } = require("apollo-server-express");
 
 module.exports = gql`

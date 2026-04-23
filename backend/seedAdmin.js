@@ -1,3 +1,4 @@
+// This script seeds the database with an initial admin user. It connects to the database, hashes the admin password, and inserts the admin user into the users table. Make sure to run this script after setting up your database and before starting the server to ensure you have an admin user to log in with.
 const pool = require("./src/db");
 const bcrypt = require("bcrypt");
 require("dotenv").config();

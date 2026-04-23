@@ -1,4 +1,8 @@
-// components/ManageLeaves.jsx
+ //This file contains the ManageLeaves component which allows admins to view, filter, and take action on employee leave requests. 
+ // It uses GraphQL queries and mutations to fetch leave data and update leave statuses. 
+ // The component also includes a simple UI for filtering leave requests by status and displaying them in a table format.
+
+
 import { useState } from "react";
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
@@ -66,7 +70,7 @@ export default function ManageLeaves() {
         <p>Review and action leave requests from your team</p>
       </div>
 
-      {/* Simple filter tabs */}
+     
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         {FILTERS.map((f) => (
           <button

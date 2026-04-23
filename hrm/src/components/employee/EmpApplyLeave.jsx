@@ -1,3 +1,6 @@
+//This file contains the EmpApplyLeave component which provides a form for employees to submit leave requests.
+// It uses a GraphQL mutation to send the leave request data to the server and includes client-side validation for the form fields.
+
 import { useState } from "react";
 import { gql } from "@apollo/client";
 import { useMutation } from "@apollo/client/react";
@@ -29,6 +32,8 @@ const LEAVE_TYPES = [
   "Unpaid Leave",
 ];
 
+
+//Function to calculate the leave days based on the start and end date of leave selected
 function calcDays(s, e) {
   if (!s || !e) return 0;
   const diff = (new Date(e) - new Date(s)) / (1000 * 60 * 60 * 24) + 1;
@@ -42,10 +47,11 @@ export default function EmpApplyLeave() {
     endDate: "",
     reason: "",
   });
+
   const [success, setSuccess] = useState("");
   const [errors, setErrors] = useState({});
-
   const [applyLeave, { loading }] = useMutation(APPLY_LEAVE);
+
 
   function validate() {
     const e = {};
@@ -57,6 +63,8 @@ export default function EmpApplyLeave() {
     return e;
   }
 
+
+  
   async function handleSubmit(e) {
     e.preventDefault();
     const e2 = validate();

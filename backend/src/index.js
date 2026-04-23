@@ -1,3 +1,5 @@
+//changed by navya
+// This file sets up the Express server and Apollo Server for handling GraphQL requests. It includes a function to extract the user from the JWT token in the request headers and adds it to the GraphQL context for use in resolvers.
 const express = require("express");
 const { ApolloServer } = require("apollo-server-express");
 const typeDefs = require("./schema");

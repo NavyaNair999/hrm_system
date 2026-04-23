@@ -1,9 +1,12 @@
+//This file contains what should be rendered in the main content area of the admin dashboard based on the selected tab. 
+// It acts as a router for the different components that make up the admin interface.
+
+
 import AdminDashboard from "./AdminDashboard";
 import AttendancePanel from "../AttendancePanel";
 import AddEmployee from "./AddEmployee";
 import ManageLeaves from "./ManageLeaves";
 import EmpApplyLeave from "../employee/EmpApplyLeave";
-// import HolidayManager from "./HolidayManager";
 import AdminSettings from "./Adminsettings";
 
 export default function AdminView({ tab, currentUser }) {
@@ -12,7 +15,6 @@ export default function AdminView({ tab, currentUser }) {
   if (tab === "addEmployee") return <AddEmployee />;
   if (tab === "leaves") return <ManageLeaves />;
   if (tab === "applyLeave") return <EmpApplyLeave />;
-  // if (tab === "holidaymanagaer") return <HolidayManager />;
   if (tab === "settings") return <AdminSettings />;
   return null;
 }

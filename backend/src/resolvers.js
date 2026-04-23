@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
+//leave request table
 pool.query(`
   CREATE TABLE IF NOT EXISTS leave_requests (
     id SERIAL PRIMARY KEY,
@@ -15,7 +16,7 @@ pool.query(`
     status VARCHAR(20) DEFAULT 'Pending'
   )
 `).catch(console.error);
-
+//attendance table
 pool.query(`
   CREATE TABLE IF NOT EXISTS attendance (
     id SERIAL PRIMARY KEY,
@@ -27,7 +28,7 @@ pool.query(`
     UNIQUE(user_id, attendance_date)
   )
 `).catch(console.error);
-
+//holiday table
 pool.query(`
   CREATE TABLE IF NOT EXISTS holidays (
     id SERIAL PRIMARY KEY,
@@ -35,7 +36,7 @@ pool.query(`
     description TEXT
   )
 `).catch(console.error);
-
+//working hours table
 pool.query(`
   CREATE TABLE IF NOT EXISTS working_hours (
     id SERIAL PRIMARY KEY,
@@ -43,7 +44,7 @@ pool.query(`
     hours VARCHAR(50)
   )
 `).catch(console.error);
-
+//function to calculate hours worked based on check-in and check-out times
 function calcHours(checkIn, checkOut) {
   if (!checkIn || !checkOut) return "0.00";
   const diff = (new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60);
@@ -60,6 +61,7 @@ function pgDateToIST(d) {
 }
 
 module.exports = {
+  //queries for fetching user info, attendance records, leave balances, leave requests, holidays, working hours, and notifications
   Query: {
     me: async (_, __, { user }) => {
       if (!user) throw new Error("Unauthorized");
@@ -178,6 +180,7 @@ module.exports = {
   },
 
   Mutation: {
+    //mutation for user login, creating users (admin only), checking in/out attendance, applying for leave, updating leave status (admin only), setting working hours (admin only), setting leave balances (admin only), toggling holidays (admin only), marking notifications as read, and changing password
     login: async (_, { username, password }) => {
       const res = await pool.query("SELECT * FROM users WHERE username=$1", [username]);
       const user = res.rows[0];
