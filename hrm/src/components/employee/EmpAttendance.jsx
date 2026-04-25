@@ -19,7 +19,7 @@ const CHECK_OUT = gql` mutation CheckOut { checkOut } `;
 
 export default function EmpAttendance() {
   const [viewDate, setViewDate] = useState(new Date());
-  const { data, loading, refetch } = useQuery(ATTENDANCE_QUERY, { fetchPolicy: "network-only" });
+  const { data, refetch } = useQuery(ATTENDANCE_QUERY, { fetchPolicy: "network-only" });
   const [checkInMut] = useMutation(CHECK_IN);
   const [checkOutMut] = useMutation(CHECK_OUT);
 

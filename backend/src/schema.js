@@ -6,6 +6,12 @@ module.exports = gql`
     id: ID!
     username: String!
     role: String!
+     employeeNumber: String
+  designation: String
+  department: String
+  reportsTo: String     
+  joiningDate: String
+  isActive: Boolean
   }
 
 type Attendance {
@@ -39,6 +45,7 @@ type Attendance {
     days: Int
     reason: String
     status: String
+    applicationDate: String  
   }
 
   type Holiday {
@@ -63,6 +70,7 @@ type Attendance {
 }
 
   type Query {
+  allUsers: [User] 
     me: User
     attendance: [Attendance]
     leaveBalance: LeaveBalance
@@ -87,6 +95,12 @@ type Attendance {
   thursday: String
   friday: String
   saturday: String
+  employeeNumber: String,
+  designation: String,
+  department: String,
+  reportsToId: ID,
+  joiningDate: String
+
 ): String
 
     checkIn: Attendance
@@ -102,5 +116,10 @@ type Attendance {
 
     markNotificationRead(id: ID!): String
     changePassword(newPassword: String!): String
+     deactivateUser(userId: ID!): String   
+    deleteUser(userId: ID!): String     
+    
+    updateLeave(leaveId: ID!, type: String!, startDate: String!, endDate: String!, days: Int!, reason: String!): String
+deleteLeave(leaveId: ID!): String
   }
 `;

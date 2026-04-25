@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
-export default function LoginPage({ form, setForm, onSubmit, error, isDarkTheme, onThemeToggle }) {
+export default function LoginPage({ form, setForm, onSubmit, error }) {
   const [showPassword, setShowPassword] = useState(false);
 
   function handleKeyDown(e) {

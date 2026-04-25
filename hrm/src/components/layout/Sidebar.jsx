@@ -6,6 +6,7 @@ const ADMIN_ITEMS = [
   { id: "leaves", icon: "📋", label: "Manage Leaves" },
   // { id: "holidaymanagaer", icon: "🌴", label: "Holiday Manager" },
   { id: "settings", icon: "⚙", label: "Settings" },
+  { id: "userList", icon: "👥", label: "User List" },
 ];
 
 const EMPLOYEE_ITEMS = [

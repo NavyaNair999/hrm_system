@@ -1,3 +1,4 @@
+-- Active: 1777099591592@@aws-1-ap-northeast-1.pooler.supabase.com@5432@postgres
 -- Create users table
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
@@ -46,3 +47,26 @@ CREATE TABLE IF NOT EXISTS employee_working_hours (
   friday VARCHAR(50),
   saturday VARCHAR(50)
 );
+-- changes made by prachi in users table to add user list module
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS employee_number VARCHAR(50) UNIQUE,
+  ADD COLUMN IF NOT EXISTS designation     VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS department      VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS reports_to      INTEGER REFERENCES users(id),
+  ADD COLUMN IF NOT EXISTS joining_date    DATE DEFAULT CURRENT_DATE,
+  ADD COLUMN IF NOT EXISTS is_active       BOOLEAN DEFAULT TRUE;
+
+  -- Backfill is_active = true for all existing users
+UPDATE users SET is_active = TRUE WHERE is_active IS NULL;
+
+--  auto-generate employee numbers for existing users
+UPDATE users
+SET employee_number = CONCAT('EMP', LPAD(id::TEXT, 4, '0'))
+WHERE employee_number IS NULL;
+
+UPDATE users
+SET department = 'Tech'
+WHERE username IN ('Prachi Suryawanshi', 'Navya Nair');
+
+ALTER TABLE leave_requests
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
