@@ -126,7 +126,7 @@ export default function AdminDashboard({ currentUser, setTab }) {
             <button
               type="button"
               className="approval-card attendance"
-              onClick={() => setTab("checkin")}
+              onClick={() => setTab("attendanceApprovals")}
             >
               <div className="approval-icon" aria-hidden="true">
                 AT

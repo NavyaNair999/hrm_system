@@ -121,6 +121,27 @@ pool.query(`
     reason         VARCHAR(200)
   )
 `).catch(console.error);
+pool.query(`
+  CREATE TABLE IF NOT EXISTS attendance_requests (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    attendance_date DATE NOT NULL,
+    requested_check_in TIMESTAMP WITH TIME ZONE,
+    requested_check_out TIMESTAMP WITH TIME ZONE,
+    reason TEXT,
+    status VARCHAR(20) DEFAULT 'Pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`).catch(console.error);
+pool.query(`
+  ALTER TABLE attendance_requests
+    ADD COLUMN IF NOT EXISTS attendance_date DATE,
+    ADD COLUMN IF NOT EXISTS requested_check_in TIMESTAMP WITH TIME ZONE,
+    ADD COLUMN IF NOT EXISTS requested_check_out TIMESTAMP WITH TIME ZONE,
+    ADD COLUMN IF NOT EXISTS reason TEXT,
+    ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Pending',
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+`).catch(console.error);
 //function to calculate hours worked based on check-in and check-out times
 function calcHours(checkIn, checkOut) {
   if (!checkIn || !checkOut) return "0.00";
@@ -181,6 +202,11 @@ async function ensureDesignationNotAssigned(id) {
 }
 function requireAdmin(user) {
   if (!user || user.role !== "admin") throw new Error("Only admin");
+}
+function validateApprovalStatus(status) {
+  if (!["Approved", "Rejected"].includes(status)) {
+    throw new Error("Invalid status");
+  }
 }
 const VALID_WORKING_DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 function validateTime(value, label) {
@@ -657,6 +683,7 @@ module.exports = {
     requestedCheckOut: toUtcISOString(r.requested_check_out),
     reason: r.reason,
     status: r.status,
+    createdAt: toUtcISOString(r.created_at),
   }));
     },
 employeeById: async (_, { id }, { user }) => {
@@ -990,12 +1017,36 @@ employeeById: async (_, { id }, { user }) => {
   { user }
 ) => {
   if (!user) throw new Error("Unauthorized");
+  if (!checkIn && !checkOut) throw new Error("Add a check-in or check-out time");
+  if (!reason || !reason.trim()) throw new Error("Reason is required");
+
+  if (checkIn && checkOut) {
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+    if (Number.isNaN(checkInDate.getTime()) || Number.isNaN(checkOutDate.getTime())) {
+      throw new Error("Invalid attendance correction time");
+    }
+    if (checkOutDate <= checkInDate) {
+      throw new Error("Check-out time must be after check-in time");
+    }
+  }
+
+  const pendingRequest = await pool.query(
+    `SELECT id
+     FROM attendance_requests
+     WHERE user_id = $1 AND attendance_date = $2 AND status = 'Pending'
+     LIMIT 1`,
+    [user.id, date]
+  );
+  if (pendingRequest.rows[0]) {
+    throw new Error("A correction request for this date is already pending");
+  }
 
   await pool.query(
     `INSERT INTO attendance_requests 
      (user_id, attendance_date, requested_check_in, requested_check_out, reason)
      VALUES ($1, $2, $3, $4, $5)`,
-    [user.id, date, checkIn, checkOut, reason]
+    [user.id, date, checkIn, checkOut, reason.trim()]
   );
 
   return "Request submitted";
@@ -1008,7 +1059,8 @@ updateAttendanceRequestStatus: async (
   { requestId, status },
   { user }
 ) => {
-  if (!user || user.role !== "admin") throw new Error("Only admin");
+  requireAdmin(user);
+  validateApprovalStatus(status);
 
   const existing = await pool.query(
     "SELECT * FROM attendance_requests WHERE id=$1",
@@ -1017,6 +1069,9 @@ updateAttendanceRequestStatus: async (
 
   const req = existing.rows[0];
   if (!req) throw new Error("Request not found");
+  if (req.status !== "Pending") {
+    throw new Error(`Request already ${String(req.status || "").toLowerCase()}`);
+  }
 
   // update status
   await pool.query(
@@ -1027,10 +1082,18 @@ updateAttendanceRequestStatus: async (
   // if approved → update attendance table
   if (status === "Approved") {
     await pool.query(
-      `UPDATE attendance
-       SET check_in = COALESCE($1, check_in),
-           check_out = COALESCE($2, check_out)
-       WHERE user_id=$3 AND attendance_date=$4`,
+      `INSERT INTO attendance (user_id, username, attendance_date, check_in, check_out)
+       VALUES (
+         $3,
+         (SELECT username FROM users WHERE id = $3),
+         $4,
+         $1,
+         $2
+       )
+       ON CONFLICT (user_id, attendance_date)
+       DO UPDATE SET
+         check_in = COALESCE(EXCLUDED.check_in, attendance.check_in),
+         check_out = COALESCE(EXCLUDED.check_out, attendance.check_out)`,
       [
         req.requested_check_in,
         req.requested_check_out,
@@ -1039,6 +1102,19 @@ updateAttendanceRequestStatus: async (
       ]
     );
   }
+
+  const formattedDate = req.attendance_date
+    ? new Date(req.attendance_date).toISOString().split("T")[0]
+    : "selected date";
+  const message =
+    status === "Approved"
+      ? `Your attendance correction request for ${formattedDate} has been approved.`
+      : `Your attendance correction request for ${formattedDate} has been rejected.`;
+
+  await pool.query(
+    "INSERT INTO notifications (user_id, message) VALUES ($1, $2)",
+    [req.user_id, message]
+  );
 
   return `Request ${status}`;
 },

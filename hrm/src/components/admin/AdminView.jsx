@@ -36,6 +36,7 @@ import AddEmployee     from "./AddEmployee";
 import ManageLeaves    from "./ManageLeaves";
 import EmpApplyLeave   from "../employee/EmpApplyLeave";
 import AdminSettings   from "./Adminsettings";
+import AdminAttendanceRequests from "./AdminAttendanceRequests";
 import UserList        from "./UserList";
 import EmployeeProfile from "../profile/EmployeeProfile"; // ← shared component
 
@@ -44,6 +45,9 @@ export default function AdminView({ tab, currentUser, setTab }) {
 
   if (tab === "dashboard")   return <AdminDashboard currentUser={currentUser} setTab={setTab} />;
   if (tab === "checkin")     return <AttendancePanel currentUser={currentUser} />;
+  if (tab === "attendanceApprovals") {
+    return <AdminAttendanceRequests onBack={() => setTab("dashboard")} />;
+  }
   if (tab === "addEmployee") return <AddEmployee />;
   if (tab === "leaves")      return <ManageLeaves />;
   if (tab === "applyLeave")  return <EmpApplyLeave />;

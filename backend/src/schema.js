@@ -237,7 +237,7 @@ module.exports = gql`
   createdAt: String
 }
 
-type AttendanceRequest {
+  type AttendanceRequest {
     id: ID
     userId: Int
     username: String
@@ -246,6 +246,7 @@ type AttendanceRequest {
     requestedCheckOut: String
     reason: String
     status: String
+    createdAt: String
   }
 
   type Department {

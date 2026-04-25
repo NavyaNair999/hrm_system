@@ -21,14 +21,14 @@
 
 
 import EmpDashboard    from "./EmpDashboard";
-import AttendancePanel from "../AttendancePanel";
+import EmpAttendance   from "./EmpAttendance";
 import EmpApplyLeave   from "./EmpApplyLeave";
 import EmpNotifications from "./EmpNotifications";
 import EmployeeProfile from "../profile/EmployeeProfile"; 
 
 export default function EmployeeView({ tab, currentUser, setTab }) {
   if (tab === "dashboard")     return <EmpDashboard currentUser={currentUser} setTab={setTab} />;
-  if (tab === "attendance")    return <AttendancePanel currentUser={currentUser} />;
+  if (tab === "attendance")    return <EmpAttendance currentUser={currentUser} />;
   if (tab === "applyLeave")    return <EmpApplyLeave />;
   if (tab === "notifications") return <EmpNotifications />;
 
