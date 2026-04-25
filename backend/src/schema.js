@@ -297,8 +297,10 @@ module.exports = gql`
     me: User
     employeeById(id: ID!): User
     attendance: [Attendance]
+    attendanceByUser(userId: ID!): [Attendance]
     leaveBalance: LeaveBalance
     myLeaves: [LeaveRequest]
+    leaveRequestsByUser(userId: ID!): [LeaveRequest]
     allLeaves: [LeaveRequest]
     holidays: [Holiday]
     workingHours: WorkingHours
@@ -308,6 +310,7 @@ module.exports = gql`
     designations(includeInactive: Boolean): [Designation!]!
     workSchedules(includeInactive: Boolean): [WorkSchedule!]!
     employeeAttendanceSummary(startDate: String!, endDate: String!): [EmployeeAttendanceSummary!]!
+    teamMembers: [User!]!
     attendanceRequests: [AttendanceRequest]
     }
 

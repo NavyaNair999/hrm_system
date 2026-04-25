@@ -203,6 +203,25 @@ async function ensureDesignationNotAssigned(id) {
 function requireAdmin(user) {
   if (!user || user.role !== "admin") throw new Error("Only admin");
 }
+async function canAccessEmployee(user, targetUserId) {
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  if (String(user.id) === String(targetUserId)) return true;
+
+  const accessRes = await pool.query(
+    `SELECT id
+     FROM users
+     WHERE id = $1
+       AND (reports_to = $2 OR direct_reporting2 = $2)
+     LIMIT 1`,
+    [targetUserId, user.id]
+  );
+  return !!accessRes.rows[0];
+}
+async function requireEmployeeAccess(user, targetUserId) {
+  const allowed = await canAccessEmployee(user, targetUserId);
+  if (!allowed) throw new Error("Access denied");
+}
 function validateApprovalStatus(status) {
   if (!["Approved", "Rejected"].includes(status)) {
     throw new Error("Invalid status");
@@ -399,6 +418,31 @@ module.exports = {
         isHoliday: !!row.holiday_desc,
       }));
     },
+
+    attendanceByUser: async (_, { userId }, { user }) => {
+      await requireEmployeeAccess(user, userId);
+      const res = await pool.query(
+        `SELECT a.id, a.user_id, u.username,
+                a.attendance_date, a.check_in, a.check_out,
+                h.description AS holiday_desc
+         FROM attendance a
+         JOIN users u ON u.id = a.user_id
+         LEFT JOIN holidays h ON h.holiday_date = a.attendance_date
+         WHERE a.user_id = $1
+         ORDER BY a.attendance_date ASC`,
+        [userId]
+      );
+      return res.rows.map((row) => ({
+        id: row.id,
+        userId: row.user_id,
+        username: row.username,
+        date: pgDateToIST(row.attendance_date),
+        checkIn: row.check_in ? row.check_in.toISOString() : null,
+        checkOut: row.check_out ? row.check_out.toISOString() : null,
+        hoursWorked: calcHours(row.check_in, row.check_out),
+        isHoliday: !!row.holiday_desc,
+      }));
+    },
     
     leaveBalance: async (_, __, { user }) => {
       if (!user) throw new Error("Unauthorized");
@@ -423,6 +467,26 @@ module.exports = {
         reason: row.reason,
         status: row.status,
           applicationDate: row.created_at ? row.created_at.toISOString().split("T")[0] : null,
+      }));
+    },
+
+    leaveRequestsByUser: async (_, { userId }, { user }) => {
+      await requireEmployeeAccess(user, userId);
+      const res = await pool.query(
+        "SELECT * FROM leave_requests WHERE user_id=$1 ORDER BY id DESC",
+        [userId]
+      );
+      return res.rows.map((row) => ({
+        id: row.id,
+        userId: row.user_id,
+        username: null,
+        type: row.type,
+        startDate: row.start_date ? row.start_date.toISOString().split("T")[0] : null,
+        endDate: row.end_date ? row.end_date.toISOString().split("T")[0] : null,
+        days: row.days,
+        reason: row.reason,
+        status: row.status,
+        applicationDate: row.created_at ? row.created_at.toISOString().split("T")[0] : null,
       }));
     },
 
@@ -687,12 +751,7 @@ module.exports = {
   }));
     },
 employeeById: async (_, { id }, { user }) => {
-  if (!user) throw new Error("Unauthorized");
- 
-  // Employees can only fetch their own profile
-  if (user.role !== "admin" && String(user.id) !== String(id)) {
-    throw new Error("Access denied");
-  }
+  await requireEmployeeAccess(user, id);
  
   const res = await pool.query(
     `SELECT u.*,
@@ -723,6 +782,39 @@ employeeById: async (_, { id }, { user }) => {
   }));
  
   return base;
+},
+
+teamMembers: async (_, __, { user }) => {
+  if (!user) throw new Error("Unauthorized");
+
+  let res;
+  if (user.role === "admin") {
+    res = await pool.query(`
+      SELECT u.*,
+             m.username AS manager_name,
+             d.username AS dr2_name
+      FROM users u
+      LEFT JOIN users m ON m.id = u.reports_to
+      LEFT JOIN users d ON d.id = u.direct_reporting2
+      WHERE u.is_active = TRUE AND u.id <> $1
+      ORDER BY u.username ASC
+    `, [user.id]);
+  } else {
+    res = await pool.query(`
+      SELECT u.*,
+             m.username AS manager_name,
+             d.username AS dr2_name
+      FROM users u
+      LEFT JOIN users m ON m.id = u.reports_to
+      LEFT JOIN users d ON d.id = u.direct_reporting2
+      WHERE u.is_active = TRUE
+        AND u.id <> $1
+        AND (u.reports_to = $1 OR u.direct_reporting2 = $1)
+      ORDER BY u.username ASC
+    `, [user.id]);
+  }
+
+  return res.rows.map(mapUser);
 },
 
 

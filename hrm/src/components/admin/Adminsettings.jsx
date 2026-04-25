@@ -684,6 +684,7 @@ export default function AdminSettings({ currentUser }) {
   const [scheduleForm, setScheduleForm] = useState(null);
   const [scheduleFeedback, setScheduleFeedback] = useState({ text: "", type: "" });
   const [scheduleToDelete, setScheduleToDelete] = useState(null);
+  const normalizedRole = String(currentUser?.role || "").toLowerCase();
 
   const { data, loading, error, refetch } = useQuery(SETTINGS_DATA, {
     fetchPolicy: "network-only",
@@ -747,7 +748,7 @@ export default function AdminSettings({ currentUser }) {
     [departments, designations, workSchedules]
   );
 
-  if (currentUser?.role !== "admin") {
+  if (currentUser && normalizedRole && normalizedRole !== "admin") {
     return (
       <div style={{ padding: 24 }}>
         <div className="alert error">Only admin can access and control settings.</div>
