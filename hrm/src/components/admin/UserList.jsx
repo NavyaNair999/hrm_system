@@ -190,7 +190,7 @@ const SORT_FIELDS = {
   joiningDate:    "Joining Date",
 };
 
-export default function UserList({ setTab }) {
+export default function UserList({ setTab, setProfileUserId }) {
   const [search, setSearch] = useState("");
   const [filterDept, setFilterDept] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
@@ -483,7 +483,7 @@ export default function UserList({ setTab }) {
                     <td>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         {/* View Profile */}
-                        <button
+                        {/* <button
                           onClick={() => setProfileUser(u)}
                           style={{
                             padding: "4px 10px", borderRadius: 6, border: "1px solid #e5c6c6",
@@ -492,6 +492,11 @@ export default function UserList({ setTab }) {
                           }}
                         >
                           View
+                        </button> */}
+                        <button
+                        onClick={() => { setProfileUserId(u.id); setTab("employeeProfile"); }}
+                        style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #e5c6c6",
+                        background: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 500, color: "#444" }}> View
                         </button>
 
                         {/* Deactivate / Activate toggle */}

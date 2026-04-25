@@ -41,18 +41,31 @@ const CHECK_OUT = gql`
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getTodayIST() {
-  const now = new Date();
-  const istOffset = 5.5 * 60 * 60 * 1000;
-  const istTime = new Date(now.getTime() + istOffset);
-  return istTime.toISOString().split("T")[0];
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function parseAttendanceTimestamp(value) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  const normalized =
+    /(?:Z|[+-]\d{2}:\d{2})$/i.test(raw) || !raw.includes("T") ? raw : `${raw}Z`;
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function formatTime(isoStr) {
-  if (!isoStr) return "—";
-  return new Date(isoStr).toLocaleTimeString("en-IN", {
-    hour: "2-digit",
-    minute: "2-digit",
+  const parsed = parseAttendanceTimestamp(isoStr);
+  if (!parsed) return "—";
+  return parsed.toLocaleTimeString("en-IN", {
     timeZone: "Asia/Kolkata",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
   });
 }
 

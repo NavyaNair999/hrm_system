@@ -29,7 +29,8 @@ await server.start();
  server.applyMiddleware({ 
     app, 
     cors: {
-      origin: ["https://extraordinary-blancmange-4e4736.netlify.app"],
+      // origin: ["https://extraordinary-blancmange-4e4736.netlify.app"],
+      origin: ["http://localhost:5173"],
       credentials: true
     }
   });

@@ -59,7 +59,25 @@ export default function EmpAttendance() {
   const todayRec = attendanceMap[todayStr];
   const isCheckedIn = !!(todayRec?.checkIn && !todayRec?.checkOut);
 
-  const formatTime = (iso) => iso ? iso.split('T')[1].substring(0, 5) : "—";
+  const parseAttendanceTimestamp = (value) => {
+    if (!value) return null;
+    const raw = String(value).trim();
+    const normalized =
+      /(?:Z|[+-]\d{2}:\d{2})$/i.test(raw) || !raw.includes("T") ? raw : `${raw}Z`;
+    const parsed = new Date(normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const formatTime = (iso) => {
+    const parsed = parseAttendanceTimestamp(iso);
+    if (!parsed) return "—";
+    return parsed.toLocaleTimeString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
 
   return (
     <div className="attendance-container">

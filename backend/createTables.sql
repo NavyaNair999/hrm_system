@@ -47,6 +47,21 @@ CREATE TABLE IF NOT EXISTS employee_working_hours (
   friday VARCHAR(50),
   saturday VARCHAR(50)
 );
+
+
+
+--25/04/26
+--for attendance correction requests
+CREATE TABLE IF NOT EXISTS attendance_requests (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  attendance_date DATE NOT NULL,
+  requested_check_in TIMESTAMP,
+  requested_check_out TIMESTAMP,
+  reason TEXT,
+  status VARCHAR(20) DEFAULT 'Pending',
+  created_at TIMESTAMP DEFAULT NOW()
+);
 -- changes made by prachi in users table to add user list module
 ALTER TABLE users
   ADD COLUMN IF NOT EXISTS employee_number VARCHAR(50) UNIQUE,
@@ -70,3 +85,4 @@ WHERE username IN ('Prachi Suryawanshi', 'Navya Nair');
 
 ALTER TABLE leave_requests
   ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
