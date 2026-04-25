@@ -1,28 +1,27 @@
-/* ──────────────────────────────────────────────────────────────────────────── */
-/* HRM SYSTEM - MAIN CSS FILE                                                  */
-/* Import all modular CSS files                                                */
-/* ──────────────────────────────────────────────────────────────────────────── */
-
-/* ── Theme & Variables ── */
+/* importing styles by omkar on 25/4/26 */
+/*  Theme & Variables  */
 @import './styles/variables.css';
 
-/* ── Global Styles ── */
+/*  Global Styles  */
 @import './styles/global.css';
 
-/* ── Layout Components ── */
+/*  Layout Components  */
 @import './styles/layout.css';
 
-/* ── Buttons ── */
+/*  Buttons  */
 @import './styles/buttons.css';
 
-/* ── Forms & Login ── */
+/*  Forms & Login  */
 @import './styles/forms.css';
 
-/* ── Cards & Stats ── */
+/*  Cards & Stats  */
 @import './styles/cards.css';
 
-/* ── Tables, Badges & Calendar ── */
+/*  Tables, Badges & Calendar  */
 @import './styles/tables.css';
 
-/* ── Responsive Design ── */
+/*  Shared Components  */
+@import './styles/components.css';
+
+/*  Responsive Design  */
 @import './styles/responsive.css';

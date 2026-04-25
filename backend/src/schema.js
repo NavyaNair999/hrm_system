@@ -231,13 +231,13 @@ module.exports = gql`
   }
 
   type Notification {
-    id: ID!
-    message: String
-    isRead: Boolean
-    createdAt: String
-  }
+  id: ID!
+  message: String
+  isRead: Boolean
+  createdAt: String
+}
 
-  type AttendanceRequest {
+type AttendanceRequest {
     id: ID
     userId: Int
     username: String
@@ -248,6 +248,49 @@ module.exports = gql`
     status: String
   }
 
+  type Department {
+    id: ID!
+    name: String!
+    isActive: Boolean!
+    createdAt: String
+    updatedAt: String
+  }
+
+  type Designation {
+    id: ID!
+    name: String!
+    isActive: Boolean!
+    createdAt: String
+    updatedAt: String
+  }
+
+  type WorkSchedule {
+    id: ID!
+    name: String!
+    scheduleType: String!
+    workingDays: [String!]!
+    maxCheckInTime: String
+    totalDailyHours: String
+    fixedCheckInTime: String
+    bufferMinutes: Int
+    fixedCheckOutTime: String
+    isActive: Boolean!
+    createdAt: String
+    updatedAt: String
+  }
+
+  type EmployeeAttendanceSummary {
+    userId: ID!
+    employeeNumber: String
+    employeeName: String!
+    department: String
+    designation: String
+    totalHoursWorked: String!
+    averageDailyWorkingHours: String!
+    totalDaysPresent: Int!
+    totalDaysAbsent: Int!
+    totalLeavesTaken: Int!
+  }
   type Query {
     allUsers: [User]
     me: User
@@ -258,9 +301,14 @@ module.exports = gql`
     allLeaves: [LeaveRequest]
     holidays: [Holiday]
     workingHours: WorkingHours
+    # defined tpes for notification designations and departments by omkar on 25/4/26
     notifications: [Notification]
+    departments(includeInactive: Boolean): [Department!]!
+    designations(includeInactive: Boolean): [Designation!]!
+    workSchedules(includeInactive: Boolean): [WorkSchedule!]!
+    employeeAttendanceSummary(startDate: String!, endDate: String!): [EmployeeAttendanceSummary!]!
     attendanceRequests: [AttendanceRequest]
-  }
+    }
 
   type Mutation {
     login(username: String!, password: String!): String
@@ -310,11 +358,47 @@ module.exports = gql`
     deleteUser(userId: ID!): String
 
     updateLeave(leaveId: ID!, type: String!, startDate: String!, endDate: String!, days: Int!, reason: String!): String
-    deleteLeave(leaveId: ID!): String
+deleteLeave(leaveId: ID!): String
+
+    createDepartment(name: String!): String
+    updateDepartment(id: ID!, name: String!): String
+    setDepartmentActive(id: ID!, isActive: Boolean!): String
+    deleteDepartment(id: ID!): String
+
+    createDesignation(name: String!): String
+    updateDesignation(id: ID!, name: String!): String
+    setDesignationActive(id: ID!, isActive: Boolean!): String
+    deleteDesignation(id: ID!): String
 
     updateEmployeeDetails(userId: ID!, dateOfBirth: String, scheduleType: String, biometricId: String): String
     changePosition(userId: ID!, newDesignation: String!, effectiveDate: String!, reason: String!): String
     updateReporting(userId: ID!, reportsToId: ID, directReporting2Id: ID): String
     adminResetPassword(userId: ID!, newPassword: String!): String
+
+    createWorkSchedule(
+      name: String!
+      scheduleType: String!
+      workingDays: [String!]!
+      maxCheckInTime: String
+      totalDailyHours: String
+      fixedCheckInTime: String
+      bufferMinutes: Int
+      fixedCheckOutTime: String
+    ): String
+
+    updateWorkSchedule(
+      id: ID!
+      name: String!
+      scheduleType: String!
+      workingDays: [String!]!
+      maxCheckInTime: String
+      totalDailyHours: String
+      fixedCheckInTime: String
+      bufferMinutes: Int
+      fixedCheckOutTime: String
+    ): String
+
+    setWorkScheduleActive(id: ID!, isActive: Boolean!): String
+    deleteWorkSchedule(id: ID!): String
   }
 `;

@@ -44,7 +44,67 @@ pool.query(`
     hours VARCHAR(50)
   )
 `).catch(console.error);
-
+pool.query(`
+  CREATE TABLE IF NOT EXISTS departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    normalized_name VARCHAR(120) UNIQUE NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`).catch(console.error);
+pool.query(`
+  CREATE TABLE IF NOT EXISTS designations (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    normalized_name VARCHAR(120) UNIQUE NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`).catch(console.error);
+pool.query(`
+  CREATE TABLE IF NOT EXISTS work_schedules (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    normalized_name VARCHAR(180) UNIQUE NOT NULL,
+    schedule_type VARCHAR(20) NOT NULL CHECK (schedule_type IN ('hours_based', 'time_based')),
+    working_days TEXT[] NOT NULL DEFAULT '{}',
+    max_check_in_time VARCHAR(5),
+    total_daily_hours VARCHAR(20),
+    fixed_check_in_time VARCHAR(5),
+    buffer_minutes INTEGER,
+    fixed_check_out_time VARCHAR(5),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`).catch(console.error);
+pool.query(`
+  INSERT INTO departments (name, normalized_name)
+  VALUES
+    ('IT', 'it'),
+    ('HR', 'hr'),
+    ('Finance', 'finance'),
+    ('Marketing', 'marketing'),
+    ('Operations', 'operations')
+  ON CONFLICT (normalized_name) DO NOTHING
+`).catch(console.error);
+pool.query(`
+  INSERT INTO departments (name, normalized_name)
+  SELECT DISTINCT department, LOWER(TRIM(department))
+  FROM users
+  WHERE department IS NOT NULL AND TRIM(department) <> ''
+  ON CONFLICT (normalized_name) DO NOTHING
+`).catch(console.error);
+pool.query(`
+  INSERT INTO designations (name, normalized_name)
+  SELECT DISTINCT designation, LOWER(TRIM(designation))
+  FROM users
+  WHERE designation IS NOT NULL AND TRIM(designation) <> ''
+  ON CONFLICT (normalized_name) DO NOTHING
+`).catch(console.error);
 pool.query(`
   ALTER TABLE users
     ADD COLUMN IF NOT EXISTS date_of_birth     DATE,
@@ -61,8 +121,6 @@ pool.query(`
     reason         VARCHAR(200)
   )
 `).catch(console.error);
-
-
 //function to calculate hours worked based on check-in and check-out times
 function calcHours(checkIn, checkOut) {
   if (!checkIn || !checkOut) return "0.00";
@@ -83,6 +141,164 @@ function pgDateToIST(d) {
   if (!d) return null;
   const istOffset = 5.5 * 60 * 60 * 1000;
   return new Date(d.getTime() + istOffset).toISOString().split("T")[0];
+}
+function isoOrNull(value) {
+  return value ? new Date(value).toISOString() : null;
+}
+function normalizeName(name) {
+  return String(name || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+function sanitizeName(name, label) {
+  const clean = String(name || "").trim().replace(/\s+/g, " ");
+  if (!clean) throw new Error(`${label} name is required`);
+  return clean;
+}
+async function ensureDepartmentNotAssigned(id) {
+  const departmentRes = await pool.query("SELECT name FROM departments WHERE id = $1", [id]);
+  const department = departmentRes.rows[0];
+  if (!department) throw new Error("Department not found");
+
+  const usageRes = await pool.query(
+    "SELECT COUNT(*)::int AS count FROM users WHERE department = $1 AND is_active = TRUE",
+    [department.name]
+  );
+  if (usageRes.rows[0].count > 0) {
+    throw new Error("Cannot delete department because it is assigned to active employees");
+  }
+}
+async function ensureDesignationNotAssigned(id) {
+  const designationRes = await pool.query("SELECT name FROM designations WHERE id = $1", [id]);
+  const designation = designationRes.rows[0];
+  if (!designation) throw new Error("Designation not found");
+
+  const usageRes = await pool.query(
+    "SELECT COUNT(*)::int AS count FROM users WHERE designation = $1 AND is_active = TRUE",
+    [designation.name]
+  );
+  if (usageRes.rows[0].count > 0) {
+    throw new Error("Cannot delete designation because it is assigned to active employees");
+  }
+}
+function requireAdmin(user) {
+  if (!user || user.role !== "admin") throw new Error("Only admin");
+}
+const VALID_WORKING_DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+function validateTime(value, label) {
+  if (!/^\d{2}:\d{2}$/.test(String(value || ""))) {
+    throw new Error(`${label} must be in HH:MM format`);
+  }
+}
+function sanitizeWorkingDays(days) {
+  const cleaned = [...new Set((days || []).map((day) => String(day).trim().toLowerCase()))];
+  if (!cleaned.length) throw new Error("At least one working day is required");
+  const invalidDay = cleaned.find((day) => !VALID_WORKING_DAYS.includes(day));
+  if (invalidDay) throw new Error(`Invalid working day: ${invalidDay}`);
+  return cleaned;
+}
+function sanitizeScheduleInput(args) {
+  const scheduleType = String(args.scheduleType || "").trim();
+  if (!["hours_based", "time_based"].includes(scheduleType)) {
+    throw new Error("Schedule type must be hours_based or time_based");
+  }
+
+  const payload = {
+    name: sanitizeName(args.name, "Schedule"),
+    normalizedName: normalizeName(args.name),
+    scheduleType,
+    workingDays: sanitizeWorkingDays(args.workingDays),
+    maxCheckInTime: null,
+    totalDailyHours: null,
+    fixedCheckInTime: null,
+    bufferMinutes: null,
+    fixedCheckOutTime: null,
+  };
+
+  if (scheduleType === "hours_based") {
+    validateTime(args.maxCheckInTime, "Maximum check-in time");
+    const totalDailyHours = String(args.totalDailyHours || "").trim();
+    if (!totalDailyHours) throw new Error("Total daily hours is required");
+    payload.maxCheckInTime = args.maxCheckInTime;
+    payload.totalDailyHours = totalDailyHours;
+  }
+
+  if (scheduleType === "time_based") {
+    validateTime(args.fixedCheckInTime, "Fixed check-in time");
+    validateTime(args.fixedCheckOutTime, "Fixed check-out time");
+    const totalDailyHours = String(args.totalDailyHours || "").trim();
+    if (!totalDailyHours) throw new Error("Total daily hours is required");
+    if (args.bufferMinutes === undefined || args.bufferMinutes === null || Number(args.bufferMinutes) < 0) {
+      throw new Error("Buffer time must be 0 or more minutes");
+    }
+    payload.fixedCheckInTime = args.fixedCheckInTime;
+    payload.fixedCheckOutTime = args.fixedCheckOutTime;
+    payload.bufferMinutes = Number(args.bufferMinutes);
+    payload.totalDailyHours = totalDailyHours;
+  }
+
+  return payload;
+}
+function mapDepartment(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    isActive: row.is_active,
+    createdAt: isoOrNull(row.created_at),
+    updatedAt: isoOrNull(row.updated_at),
+  };
+}
+function mapDesignation(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    isActive: row.is_active,
+    createdAt: isoOrNull(row.created_at),
+    updatedAt: isoOrNull(row.updated_at),
+  };
+}
+function mapWorkSchedule(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    scheduleType: row.schedule_type,
+    workingDays: row.working_days || [],
+    maxCheckInTime: row.max_check_in_time || null,
+    totalDailyHours: row.total_daily_hours || null,
+    fixedCheckInTime: row.fixed_check_in_time || null,
+    bufferMinutes: row.buffer_minutes ?? null,
+    fixedCheckOutTime: row.fixed_check_out_time || null,
+    isActive: row.is_active,
+    createdAt: isoOrNull(row.created_at),
+    updatedAt: isoOrNull(row.updated_at),
+  };
+}
+function formatHours(value) {
+  return Number.isFinite(value) ? value.toFixed(2) : "0.00";
+}
+function parseDateOnly(value) {
+  const [year, month, day] = String(value || "").split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, (month || 1) - 1, day || 1));
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error("Invalid date");
+  }
+  return parsed;
+}
+function dateToYmd(date) {
+  return date.toISOString().split("T")[0];
+}
+function getWorkingDatesInRange(startDate, endDate, holidaySet) {
+  const dates = [];
+  const cursor = new Date(startDate.getTime());
+
+  while (cursor <= endDate) {
+    const dayOfWeek = cursor.getUTCDay();
+    const dateKey = dateToYmd(cursor);
+    if (dayOfWeek !== 0 && !holidaySet.has(dateKey)) {
+      dates.push(dateKey);
+    }
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return dates;
 }
 // function mapUser(row) {
 //   return {
@@ -267,6 +483,159 @@ module.exports = {
     createdAt: n.created_at.toISOString(),
   }));
     },
+
+    departments: async (_, { includeInactive }, { user }) => {
+      requireAdmin(user);
+      const res = await pool.query(
+        `SELECT * FROM departments
+         WHERE ($1::boolean = TRUE OR is_active = TRUE)
+         ORDER BY is_active DESC, name ASC`,
+        [!!includeInactive]
+      );
+      return res.rows.map(mapDepartment);
+    },
+
+    designations: async (_, { includeInactive }, { user }) => {
+      requireAdmin(user);
+      const res = await pool.query(
+        `SELECT * FROM designations
+         WHERE ($1::boolean = TRUE OR is_active = TRUE)
+         ORDER BY is_active DESC, name ASC`,
+        [!!includeInactive]
+      );
+      return res.rows.map(mapDesignation);
+    },
+
+    workSchedules: async (_, { includeInactive }, { user }) => {
+      requireAdmin(user);
+      const res = await pool.query(
+        `SELECT * FROM work_schedules
+         WHERE ($1::boolean = TRUE OR is_active = TRUE)
+         ORDER BY is_active DESC, name ASC`,
+        [!!includeInactive]
+      );
+      return res.rows.map(mapWorkSchedule);
+    },
+
+    employeeAttendanceSummary: async (_, { startDate, endDate }, { user }) => {
+      requireAdmin(user);
+
+      const start = parseDateOnly(startDate);
+      const end = parseDateOnly(endDate);
+      if (start > end) throw new Error("Start date cannot be after end date");
+
+      const [usersRes, attendanceRes, leavesRes, holidaysRes] = await Promise.all([
+        pool.query(
+          `SELECT id, username, employee_number, department, designation
+           FROM users
+           WHERE is_active = TRUE AND role <> 'admin'
+           ORDER BY username ASC`
+        ),
+        pool.query(
+          `SELECT user_id, attendance_date, check_in, check_out
+           FROM attendance
+           WHERE attendance_date BETWEEN $1 AND $2`,
+          [startDate, endDate]
+        ),
+        pool.query(
+          `SELECT user_id, start_date, end_date, days, status
+           FROM leave_requests
+           WHERE status = 'Approved'
+             AND start_date <= $2
+             AND end_date >= $1`,
+          [startDate, endDate]
+        ),
+        pool.query(
+          `SELECT holiday_date
+           FROM holidays
+           WHERE holiday_date BETWEEN $1 AND $2`,
+          [startDate, endDate]
+        ),
+      ]);
+
+      const holidaySet = new Set(
+        holidaysRes.rows.map((row) => row.holiday_date.toISOString().split("T")[0])
+      );
+      const workingDates = getWorkingDatesInRange(start, end, holidaySet);
+      const totalWorkingDays = workingDates.length;
+
+      const attendanceByUser = new Map();
+      attendanceRes.rows.forEach((row) => {
+        const dateKey = row.attendance_date.toISOString().split("T")[0];
+        if (!attendanceByUser.has(row.user_id)) {
+          attendanceByUser.set(row.user_id, new Map());
+        }
+        const userDates = attendanceByUser.get(row.user_id);
+        if (!userDates.has(dateKey)) {
+          userDates.set(dateKey, {
+            present: false,
+            hours: 0,
+          });
+        }
+        const existing = userDates.get(dateKey);
+        existing.present = existing.present || !!row.check_in;
+        existing.hours += Number(calcHours(row.check_in, row.check_out));
+      });
+
+      const approvedLeaveDatesByUser = new Map();
+      leavesRes.rows.forEach((row) => {
+        const leaveStart = parseDateOnly(row.start_date.toISOString().split("T")[0]);
+        const leaveEnd = parseDateOnly(row.end_date.toISOString().split("T")[0]);
+        const effectiveStart = leaveStart > start ? leaveStart : start;
+        const effectiveEnd = leaveEnd < end ? leaveEnd : end;
+
+        if (!approvedLeaveDatesByUser.has(row.user_id)) {
+          approvedLeaveDatesByUser.set(row.user_id, new Set());
+        }
+
+        const userLeaveDates = approvedLeaveDatesByUser.get(row.user_id);
+        const cursor = new Date(effectiveStart.getTime());
+        while (cursor <= effectiveEnd) {
+          const dateKey = dateToYmd(cursor);
+          if (workingDates.includes(dateKey)) {
+            userLeaveDates.add(dateKey);
+          }
+          cursor.setUTCDate(cursor.getUTCDate() + 1);
+        }
+      });
+
+      return usersRes.rows.map((employee) => {
+        const userAttendance = attendanceByUser.get(employee.id) || new Map();
+        const approvedLeaveDates = approvedLeaveDatesByUser.get(employee.id) || new Set();
+
+        let totalHours = 0;
+        let presentDays = 0;
+        workingDates.forEach((dateKey) => {
+          const attendance = userAttendance.get(dateKey);
+          if (attendance?.present) {
+            presentDays += 1;
+            totalHours += attendance.hours;
+          }
+        });
+
+        let leavesTaken = 0;
+        approvedLeaveDates.forEach((dateKey) => {
+          if (!userAttendance.get(dateKey)?.present) {
+            leavesTaken += 1;
+          }
+        });
+
+        const absentDays = Math.max(totalWorkingDays - presentDays - leavesTaken, 0);
+
+        return {
+          userId: employee.id,
+          employeeNumber: employee.employee_number || null,
+          employeeName: employee.username,
+          department: employee.department || null,
+          designation: employee.designation || null,
+          totalHoursWorked: formatHours(totalHours),
+          averageDailyWorkingHours: formatHours(presentDays ? totalHours / presentDays : 0),
+          totalDaysPresent: presentDays,
+          totalDaysAbsent: absentDays,
+          totalLeavesTaken: leavesTaken,
+        };
+      });
+    },
   
   //changed by navya on 25/04/26 for dynamic approval section(1.1)
     attendanceRequests: async (_, __, { user }) => {
@@ -367,7 +736,7 @@ employeeById: async (_, { id }, { user }) => {
       },
       { user }
     ) => {
-      if (!user || user.role !== "admin") throw new Error("Only admin");
+      requireAdmin(user);
 
       const hash = await bcrypt.hash(password, 10);
 
@@ -494,7 +863,7 @@ employeeById: async (_, { id }, { user }) => {
     },
 
     updateLeaveStatus: async (_, { leaveId, status }, { user }) => {
-      if (!user || user.role !== "admin") throw new Error("Only admin");
+      requireAdmin(user);
       if (!["Approved", "Rejected"].includes(status)) throw new Error("Invalid status");
 
       // Get existing leave
@@ -549,7 +918,7 @@ employeeById: async (_, { id }, { user }) => {
     },
 
     setWorkingHours: async (_, args, { user }) => {
-      if (!user || user.role !== "admin") throw new Error("Only admin");
+      requireAdmin(user);
       const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
       for (const day of days) {
         if (args[day] !== undefined && args[day] !== null) {
@@ -564,7 +933,7 @@ employeeById: async (_, { id }, { user }) => {
     },
 
     setLeave: async (_, { userId, paid, casual, wfh }, { user }) => {
-      if (!user || user.role !== "admin") throw new Error("Only admin");
+      requireAdmin(user);
       await pool.query(
         `INSERT INTO leaves (user_id, paid, casual, wfh) VALUES ($1,$2,$3,$4)
          ON CONFLICT (user_id) DO UPDATE SET paid=$2, casual=$3, wfh=$4`,
@@ -677,7 +1046,7 @@ updateAttendanceRequestStatus: async (
 
 // toggle active/inactive status
     deactivateUser: async (_, { userId }, { user }) => {
-      if (!user || user.role !== "admin") throw new Error("Only admin");
+      requireAdmin(user);
       if (String(userId) === String(user.id)) throw new Error("Cannot deactivate yourself");
 
       const res = await pool.query("SELECT is_active FROM users WHERE id=$1", [userId]);
@@ -690,7 +1059,7 @@ updateAttendanceRequestStatus: async (
 
     //  hard delete (with cascade cleanup)
     deleteUser: async (_, { userId }, { user }) => {
-      if (!user || user.role !== "admin") throw new Error("Only admin");
+      requireAdmin(user);
       if (String(userId) === String(user.id)) throw new Error("Cannot delete yourself");
 
       // Clean up related data first
@@ -737,8 +1106,177 @@ deleteLeave: async (_, { leaveId }, { user }) => {
   return "Leave deleted";
 },
 
+createDepartment: async (_, { name }, { user }) => {
+  requireAdmin(user);
+  const cleanName = sanitizeName(name, "Department");
+  const normalizedName = normalizeName(cleanName);
+  await pool.query(
+    `INSERT INTO departments (name, normalized_name)
+     VALUES ($1, $2)`,
+    [cleanName, normalizedName]
+  );
+  return "Department created";
+},
+
+updateDepartment: async (_, { id, name }, { user }) => {
+  requireAdmin(user);
+  const cleanName = sanitizeName(name, "Department");
+  const normalizedName = normalizeName(cleanName);
+  const result = await pool.query(
+    `UPDATE departments
+     SET name = $1, normalized_name = $2, updated_at = CURRENT_TIMESTAMP
+     WHERE id = $3`,
+    [cleanName, normalizedName, id]
+  );
+  if (!result.rowCount) throw new Error("Department not found");
+  return "Department updated";
+},
+
+setDepartmentActive: async (_, { id, isActive }, { user }) => {
+  requireAdmin(user);
+  const result = await pool.query(
+    `UPDATE departments
+     SET is_active = $1, updated_at = CURRENT_TIMESTAMP
+     WHERE id = $2`,
+    [isActive, id]
+  );
+  if (!result.rowCount) throw new Error("Department not found");
+  return isActive ? "Department activated" : "Department deactivated";
+},
+
+deleteDepartment: async (_, { id }, { user }) => {
+  requireAdmin(user);
+  await ensureDepartmentNotAssigned(id);
+  const result = await pool.query("DELETE FROM departments WHERE id = $1", [id]);
+  if (!result.rowCount) throw new Error("Department not found");
+  return "Department deleted";
+},
+
+createDesignation: async (_, { name }, { user }) => {
+  requireAdmin(user);
+  const cleanName = sanitizeName(name, "Designation");
+  const normalizedName = normalizeName(cleanName);
+  await pool.query(
+    `INSERT INTO designations (name, normalized_name)
+     VALUES ($1, $2)`,
+    [cleanName, normalizedName]
+  );
+  return "Designation created";
+},
+
+updateDesignation: async (_, { id, name }, { user }) => {
+  requireAdmin(user);
+  const cleanName = sanitizeName(name, "Designation");
+  const normalizedName = normalizeName(cleanName);
+  const result = await pool.query(
+    `UPDATE designations
+     SET name = $1, normalized_name = $2, updated_at = CURRENT_TIMESTAMP
+     WHERE id = $3`,
+    [cleanName, normalizedName, id]
+  );
+  if (!result.rowCount) throw new Error("Designation not found");
+  return "Designation updated";
+},
+
+setDesignationActive: async (_, { id, isActive }, { user }) => {
+  requireAdmin(user);
+  const result = await pool.query(
+    `UPDATE designations
+     SET is_active = $1, updated_at = CURRENT_TIMESTAMP
+     WHERE id = $2`,
+    [isActive, id]
+  );
+  if (!result.rowCount) throw new Error("Designation not found");
+  return isActive ? "Designation activated" : "Designation deactivated";
+},
+
+deleteDesignation: async (_, { id }, { user }) => {
+  requireAdmin(user);
+  await ensureDesignationNotAssigned(id);
+  const result = await pool.query("DELETE FROM designations WHERE id = $1", [id]);
+  if (!result.rowCount) throw new Error("Designation not found");
+  return "Designation deleted";
+},
+
+createWorkSchedule: async (_, args, { user }) => {
+  requireAdmin(user);
+  const schedule = sanitizeScheduleInput(args);
+  await pool.query(
+    `INSERT INTO work_schedules (
+       name, normalized_name, schedule_type, working_days,
+       max_check_in_time, total_daily_hours,
+       fixed_check_in_time, buffer_minutes, fixed_check_out_time
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [
+      schedule.name,
+      schedule.normalizedName,
+      schedule.scheduleType,
+      schedule.workingDays,
+      schedule.maxCheckInTime,
+      schedule.totalDailyHours,
+      schedule.fixedCheckInTime,
+      schedule.bufferMinutes,
+      schedule.fixedCheckOutTime,
+    ]
+  );
+  return "Schedule created";
+},
+
+updateWorkSchedule: async (_, { id, ...args }, { user }) => {
+  requireAdmin(user);
+  const schedule = sanitizeScheduleInput(args);
+  const result = await pool.query(
+    `UPDATE work_schedules
+     SET name = $1,
+         normalized_name = $2,
+         schedule_type = $3,
+         working_days = $4,
+         max_check_in_time = $5,
+         total_daily_hours = $6,
+         fixed_check_in_time = $7,
+         buffer_minutes = $8,
+         fixed_check_out_time = $9,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = $10`,
+    [
+      schedule.name,
+      schedule.normalizedName,
+      schedule.scheduleType,
+      schedule.workingDays,
+      schedule.maxCheckInTime,
+      schedule.totalDailyHours,
+      schedule.fixedCheckInTime,
+      schedule.bufferMinutes,
+      schedule.fixedCheckOutTime,
+      id,
+    ]
+  );
+  if (!result.rowCount) throw new Error("Schedule not found");
+  return "Schedule updated";
+},
+
+setWorkScheduleActive: async (_, { id, isActive }, { user }) => {
+  requireAdmin(user);
+  const result = await pool.query(
+    `UPDATE work_schedules
+     SET is_active = $1, updated_at = CURRENT_TIMESTAMP
+     WHERE id = $2`,
+    [isActive, id]
+  );
+  if (!result.rowCount) throw new Error("Schedule not found");
+  return isActive ? "Schedule activated" : "Schedule deactivated";
+},
+
+deleteWorkSchedule: async (_, { id }, { user }) => {
+  requireAdmin(user);
+  const result = await pool.query("DELETE FROM work_schedules WHERE id = $1", [id]);
+  if (!result.rowCount) throw new Error("Schedule not found");
+  return "Schedule deleted";
+},
+
 updateEmployeeDetails: async (_, { userId, dateOfBirth, scheduleType, biometricId }, { user }) => {
-  if (!user || user.role !== "admin") throw new Error("Only admin");
+  requireAdmin(user);
   await pool.query(
     `UPDATE users
      SET date_of_birth = COALESCE($1::date, date_of_birth),
@@ -751,7 +1289,7 @@ updateEmployeeDetails: async (_, { userId, dateOfBirth, scheduleType, biometricI
 },
 
 changePosition: async (_, { userId, newDesignation, effectiveDate, reason }, { user }) => {
-  if (!user || user.role !== "admin") throw new Error("Only admin");
+  requireAdmin(user);
   await pool.query(
     `INSERT INTO position_history (user_id, designation, effective_date, reason)
      VALUES ($1, $2, $3::date, $4)`,
@@ -762,7 +1300,7 @@ changePosition: async (_, { userId, newDesignation, effectiveDate, reason }, { u
 },
 
 updateReporting: async (_, { userId, reportsToId, directReporting2Id }, { user }) => {
-  if (!user || user.role !== "admin") throw new Error("Only admin");
+  requireAdmin(user);
   if (String(reportsToId) === String(userId)) throw new Error("Employee cannot report to themselves");
   await pool.query(
     `UPDATE users SET reports_to = $1, direct_reporting2 = $2 WHERE id = $3`,
@@ -772,7 +1310,7 @@ updateReporting: async (_, { userId, reportsToId, directReporting2Id }, { user }
 },
 
 adminResetPassword: async (_, { userId, newPassword }, { user }) => {
-  if (!user || user.role !== "admin") throw new Error("Only admin");
+  requireAdmin(user);
   const hash = await bcrypt.hash(newPassword, 10);
   await pool.query("UPDATE users SET password=$1 WHERE id=$2", [hash, userId]);
   return "Password reset successfully";
@@ -780,3 +1318,4 @@ adminResetPassword: async (_, { userId, newPassword }, { user }) => {
 
   },
 };
+  

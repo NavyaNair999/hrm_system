@@ -86,3 +86,59 @@ WHERE username IN ('Prachi Suryawanshi', 'Navya Nair');
 ALTER TABLE leave_requests
   ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
+
+--  tables for departments, designations and work schedules by omkar on 25/4/26
+CREATE TABLE IF NOT EXISTS departments (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  normalized_name VARCHAR(120) UNIQUE NOT NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS designations (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  normalized_name VARCHAR(120) UNIQUE NOT NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS work_schedules (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  normalized_name VARCHAR(180) UNIQUE NOT NULL,
+  schedule_type VARCHAR(20) NOT NULL CHECK (schedule_type IN ('hours_based', 'time_based')),
+  working_days TEXT[] NOT NULL DEFAULT '{}',
+  max_check_in_time VARCHAR(5),
+  total_daily_hours VARCHAR(20),
+  fixed_check_in_time VARCHAR(5),
+  buffer_minutes INTEGER,
+  fixed_check_out_time VARCHAR(5),
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO departments (name, normalized_name)
+VALUES
+  ('IT', 'it'),
+  ('HR', 'hr'),
+  ('Finance', 'finance'),
+  ('Marketing', 'marketing'),
+  ('Operations', 'operations')
+ON CONFLICT (normalized_name) DO NOTHING;
+
+INSERT INTO departments (name, normalized_name)
+SELECT DISTINCT department, LOWER(TRIM(department))
+FROM users
+WHERE department IS NOT NULL AND TRIM(department) <> ''
+ON CONFLICT (normalized_name) DO NOTHING;
+
+INSERT INTO designations (name, normalized_name)
+SELECT DISTINCT designation, LOWER(TRIM(designation))
+FROM users
+WHERE designation IS NOT NULL AND TRIM(designation) <> ''
+ON CONFLICT (normalized_name) DO NOTHING;

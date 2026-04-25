@@ -15,7 +15,7 @@ import Sidebar from "./components/layout/Sidebar";
 import AdminView from "./components/admin/AdminView";
 import EmployeeView from "./components/employee/EmployeeView";
 
-// Apollo Client Setup 
+// ─── Apollo Client Setup ────────────────────────────────────────────────────
 // const httpLink = createHttpLink({
 //   uri: "https://hrm-system-20o3.onrender.com/graphql", // Deployed server address
 // });
