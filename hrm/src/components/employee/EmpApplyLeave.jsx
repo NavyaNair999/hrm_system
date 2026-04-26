@@ -2,6 +2,7 @@ import { useState } from "react";
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
 import ToastPopup from "../ui/ToastPopup";
+import { useEffect } from "react";
 
 const LEAVE_BALANCE = gql`
   query LeaveBalance {
@@ -250,7 +251,19 @@ export default function EmpApplyLeave() {
   const [deleteLeave, { loading: deleting }] = useMutation(DELETE_LEAVE);
 
   const leaves = leavesData?.myLeaves || [];
+  const sickTotal = balanceData?.leaveBalance?.casual ?? 0;
   const days = calcDays(form.startDate, form.endDate);
+// useEffect to clear success and error messages after 3 seconds by omkar on 26/4/26
+  useEffect(() => {
+  if (success || errors.submit) {
+    const timer = setTimeout(() => {
+      setSuccess("");
+      setErrors((prev) => ({ ...prev, submit: "" }));
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }
+}, [success, errors.submit]);
 
   function validate() {
     const e = {};
@@ -261,29 +274,59 @@ export default function EmpApplyLeave() {
     if (!form.reason.trim()) e.reason = "Required";
     return e;
   }
-
+// prevent applying for sick leave if no balance left by omkar on 26/4/26 
   async function handleSubmit() {
-    const e2 = validate();
-    if (Object.keys(e2).length) { setErrors(e2); return; }
-    const d = calcDays(form.startDate, form.endDate);
-    try {
-      if (editingId) {
-        await updateLeave({ variables: { leaveId: editingId, type: form.type, startDate: form.startDate, endDate: form.endDate, days: d, reason: form.reason } });
-        setSuccess("Leave request updated successfully!");
-        setEditingId(null);
-      } else {
-        await applyLeave({ variables: { type: form.type, startDate: form.startDate, endDate: form.endDate, days: d, reason: form.reason } });
-        setSuccess("Leave request submitted successfully!");
-      }
-      setForm(EMPTY_FORM);
-      setErrors({});
-      refetch();
-      setTimeout(() => setSuccess(""), 3500);
-    } catch (err) {
-      setErrors({ submit: err.message });
-      setTimeout(() => setErrors((current) => ({ ...current, submit: "" })), 3500);
-    }
+  const e2 = validate();
+  if (Object.keys(e2).length) { 
+    setErrors(e2); 
+    return; 
   }
+
+  // BLOCK if no sick leave left
+  if (form.type === "Sick Leave" && remainingSick <= 0) {
+    setErrors({ submit: "No Sick Leave balance remaining" });
+    return;
+  }
+
+  const d = calcDays(form.startDate, form.endDate);
+
+  try {
+    if (editingId) {
+      await updateLeave({
+        variables: {
+          leaveId: editingId,
+          type: form.type,
+          startDate: form.startDate,
+          endDate: form.endDate,
+          days: d,
+          reason: form.reason
+        }
+      });
+      setSuccess("Leave request updated successfully!");
+      setEditingId(null);
+    } else {
+      await applyLeave({
+        variables: {
+          type: form.type,
+          startDate: form.startDate,
+          endDate: form.endDate,
+          days: d,
+          reason: form.reason
+        }
+      });
+      setSuccess("Leave request submitted successfully!");
+    }
+
+    setForm(EMPTY_FORM);
+    setErrors({});
+    refetch();
+    setTimeout(() => setSuccess(""), 3500);
+
+  } catch (err) {
+    setErrors({ submit: err.message });
+    setTimeout(() => setErrors((c) => ({ ...c, submit: "" })), 3500);
+  }
+}
 
   function handleEdit(leave) {
     setForm({ type: leave.type, startDate: leave.startDate, endDate: leave.endDate, reason: leave.reason });
@@ -339,6 +382,12 @@ export default function EmpApplyLeave() {
     color: "var(--text-secondary,#374151)",
     marginBottom: 6,
   };
+
+  const approvedSickUsed = (leaves || [])
+  .filter(l => l.status === "Approved" && l.type === "Sick Leave")
+  .reduce((sum, l) => sum + (l.days || 0), 0);
+
+const remainingSick = Math.max(0, sickTotal - approvedSickUsed);
 
   return (
     <div style={{ padding: "0 0 40px" }}>
@@ -425,11 +474,12 @@ export default function EmpApplyLeave() {
               )}
             </div>
 
-
+              {/* ui msg for sick leave by omkar on 26/4/26 */}
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {/* Leave Type */}
               <div>
                 <label style={labelStyle}>Leave Type</label>
+
                 <select
                   value={form.type}
                   onChange={(e) => setForm((s) => ({ ...s, type: e.target.value }))}
@@ -437,6 +487,21 @@ export default function EmpApplyLeave() {
                 >
                   {LEAVE_TYPES.map((t) => <option key={t}>{t}</option>)}
                 </select>
+
+                {/* Warning message */}
+                {form.type === "Sick Leave" && remainingSick <= 0 && (
+                  <div style={{
+                    background: "#fff1f2",
+                    border: "1px solid #fecaca",
+                    color: "#dc2626",
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    fontSize: 13,
+                    marginTop: 8
+                  }}>
+                    ⚠️ You don’t have any Sick Leave remaining.
+                  </div>
+                )}
               </div>
 
               {/* Date Range — side by side */}

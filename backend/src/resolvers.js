@@ -1052,8 +1052,48 @@ checkIn: async (_, __, { user }) => {
 
 
 //chaanged by neha to handle leave application and notification logic for both admin and employee roles in a dynamic way(1.1)
+
+// edited apply leave for strict sick leave by omkar on 26/4/26 
 applyLeave: async (_, { type, startDate, endDate, days, reason }, { user }) => {
   if (!user) throw new Error("Unauthorized");
+
+  
+
+  if (type === "Sick Leave") {
+    // 1. Get total sick leave (casual column)
+    const balanceRes = await pool.query(
+      "SELECT casual FROM leaves WHERE user_id = $1",
+      [user.id]
+    );
+
+    const totalSick = balanceRes.rows[0]?.casual || 0;
+
+    // 2. Get used sick leave (approved only)
+    const usedRes = await pool.query(
+      `SELECT COALESCE(SUM(days), 0) AS used
+       FROM leave_requests
+       WHERE user_id = $1
+         AND type = 'Sick Leave'
+         AND status = 'Approved'`,
+      [user.id]
+    );
+
+    const usedSick = Number(usedRes.rows[0].used || 0);
+    const remainingSick = totalSick - usedSick;
+
+    // No balance
+    if (remainingSick <= 0) {
+      throw new Error("No Sick Leave balance remaining");
+    }
+
+    // Applying more than available
+    if (days > remainingSick) {
+      throw new Error(`Only ${remainingSick} Sick Leave(s) remaining`);
+    }
+  }
+
+  
+
 
   // 1. Insert the leave request into the database
   await pool.query(
@@ -1067,24 +1107,32 @@ applyLeave: async (_, { type, startDate, endDate, days, reason }, { user }) => {
     "SELECT reports_to, direct_reporting2, role, username FROM users WHERE id = $1",
     [user.id]
   );
+
   const currentUserData = userRes.rows[0];
   const username = currentUserData?.username || user.username || "Unknown user";
   const msg = `New leave request from ${username}.`;
+
   const managerIds = new Set();
   if (currentUserData.reports_to) managerIds.add(currentUserData.reports_to);
   if (currentUserData.direct_reporting2) managerIds.add(currentUserData.direct_reporting2);
 
   if (currentUserData.role === 'admin') {
-    // ADMIN CASE: Only notify their reporting manager(s)
+    // ADMIN CASE
     for (const managerId of managerIds) {
-      await pool.query("INSERT INTO notifications (user_id, message) VALUES ($1, $2)", [managerId, msg]);
+      await pool.query(
+        "INSERT INTO notifications (user_id, message) VALUES ($1, $2)",
+        [managerId, msg]
+      );
     }
   } else {
-    // EMPLOYEE CASE: Notify reporting managers AND all admins
+    // EMPLOYEE CASE
     for (const managerId of managerIds) {
-      await pool.query("INSERT INTO notifications (user_id, message) VALUES ($1, $2)", [managerId, msg]);
+      await pool.query(
+        "INSERT INTO notifications (user_id, message) VALUES ($1, $2)",
+        [managerId, msg]
+      );
     }
-    // Notify all admins (avoid duplicates if an admin is already a reporting manager)
+
     await pool.query(
       `INSERT INTO notifications (user_id, message)
        SELECT id, $1 FROM users
