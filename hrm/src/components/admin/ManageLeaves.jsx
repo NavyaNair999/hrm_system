@@ -1,6 +1,6 @@
- //This file contains the ManageLeaves component which allows admins to view, filter, and take action on employee leave requests. 
- // It uses GraphQL queries and mutations to fetch leave data and update leave statuses. 
- // The component also includes a simple UI for filtering leave requests by status and displaying them in a table format.
+//This file contains the ManageLeaves component which allows admins to view, filter, and take action on employee leave requests. 
+// It uses GraphQL queries and mutations to fetch leave data and update leave statuses. 
+// The component also includes a simple UI for filtering leave requests by status and displaying them in a table format.
 
 
 import { useState } from "react";
@@ -40,10 +40,159 @@ function initials(name) {
 }
 
 const FILTERS = ["All", "Pending", "Approved", "Rejected"];
+function LeaveDetailModal({ leave, onClose, onApprove, onReject, updating }) {
+  if (!leave) return null;
 
+  const statusColor = {
+    Pending: { bg: "#fff8e1", color: "#b45309", border: "#fcd34d" },
+    Approved: { bg: "#e8f8ef", color: "#1a7a4a", border: "#abebc6" },
+    Rejected: { bg: "#fdecea", color: "#c0392b", border: "#f5c6cb" },
+  }[leave.status] || { bg: "#f5f5f5", color: "#888", border: "#ddd" };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 1200,
+        background: "rgba(0,0,0,0.45)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "var(--bg-primary, #fff)",
+          borderRadius: 16,
+          padding: "32px",
+          width: "92%",
+          maxWidth: 480,
+          boxShadow: "0 16px 48px rgba(0,0,0,0.18)",
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div className="hrm-avatar" style={{ width: 44, height: 44, fontSize: 15 }}>
+              {initials(leave.username)}
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary, #111)" }}>
+                {leave.username}
+              </div>
+              <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
+                Leave Request #{leave.id}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#aaa", lineHeight: 1, padding: 0 }}
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Status badge */}
+        <div style={{ marginBottom: 20 }}>
+          <span style={{
+            display: "inline-block",
+            padding: "4px 14px",
+            borderRadius: 20,
+            fontSize: 12,
+            fontWeight: 700,
+            background: statusColor.bg,
+            color: statusColor.color,
+            border: `1px solid ${statusColor.border}`,
+          }}>
+            {leave.status}
+          </span>
+        </div>
+
+        {/* Details grid */}
+        <div style={{
+          display: "grid", gridTemplateColumns: "1fr 1fr",
+          gap: "0 24px",
+          borderTop: "1px solid var(--border-color, #f0f0f0)",
+          marginBottom: 20,
+        }}>
+          {[
+            { label: "Leave Type", value: leave.type },
+            { label: "Days", value: leave.days },
+            { label: "Start Date", value: leave.startDate },
+            { label: "End Date", value: leave.endDate },
+          ].map(({ label, value }) => (
+            <div key={label} style={{ padding: "14px 0", borderBottom: "1px solid var(--border-color, #f0f0f0)" }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>
+                {label}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary, #111)" }}>
+                {value || "—"}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Full reason */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>
+            Reason
+          </div>
+          <div style={{
+            fontSize: 13, lineHeight: 1.7,
+            color: "var(--text-primary, #111)",
+            background: "var(--bg-secondary, #fafafa)",
+            border: "1px solid var(--border-color, #f0f0f0)",
+            borderRadius: 10,
+            padding: "14px 16px",
+            whiteSpace: "pre-wrap",
+          }}>
+            {leave.reason || "No reason provided."}
+          </div>
+        </div>
+
+        {/* Actions */}
+        {leave.status === "Pending" ? (
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <button
+              onClick={onClose}
+              style={{ padding: "9px 20px", borderRadius: 8, border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: 13 }}
+            >
+              Close
+            </button>
+            <button
+              className="btn-primary btn-sm btn-reject"
+              onClick={() => { onReject(leave.id); onClose(); }}
+              disabled={updating}
+              style={{ padding: "9px 20px", fontSize: 13 }}
+            >
+              Reject
+            </button>
+            <button
+              className="btn-primary btn-sm btn-approve"
+              onClick={() => { onApprove(leave.id); onClose(); }}
+              disabled={updating}
+              style={{ padding: "9px 20px", fontSize: 13 }}
+            >
+              Approve
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              onClick={onClose}
+              style={{ padding: "9px 20px", borderRadius: 8, border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: 13 }}
+            >
+              Close
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 export default function ManageLeaves() {
   const [filter, setFilter] = useState("All");
-
+  const [selectedLeave, setSelectedLeave] = useState(null);
   const { data, loading, refetch } = useQuery(ALL_LEAVES, {
     fetchPolicy: "network-only",
   });
@@ -70,7 +219,7 @@ export default function ManageLeaves() {
         <p>Review and action leave requests from your team</p>
       </div>
 
-     
+
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         {FILTERS.map((f) => (
           <button
@@ -161,8 +310,12 @@ export default function ManageLeaves() {
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
+                        color: "#c0392b",
+                        cursor: "pointer",
+                        textDecoration: "underline dotted",
                       }}
-                      title={req.reason}
+                      onClick={() => setSelectedLeave(req)}
+                      title="Click to view full reason"
                     >
                       {req.reason}
                     </td>
@@ -200,6 +353,13 @@ export default function ManageLeaves() {
           </div>
         )}
       </div>
+      <LeaveDetailModal
+        leave={selectedLeave}
+        onClose={() => setSelectedLeave(null)}
+        onApprove={(id) => handleUpdate(id, "Approved")}
+        onReject={(id) => handleUpdate(id, "Rejected")}
+        updating={updating}
+      />
     </div>
   );
 }
