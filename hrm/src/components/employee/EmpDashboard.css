@@ -18,16 +18,13 @@
 
 .leave-chart-card {
   padding: 1.5rem;
-  background:
-    radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 30%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+  background: var(--bg-primary);
+
 }
 
 .leave-quick-apply {
   padding: 1.6rem;
-  background:
-    radial-gradient(circle at top right, rgba(249, 115, 22, 0.18), transparent 34%),
-    linear-gradient(180deg, #fff7ed, #ffffff);
+    background: var(--bg-primary);
   display: grid;
   align-content: center;
   gap: 0.9rem;
@@ -36,13 +33,13 @@
 .leave-card-header h2,
 .leave-quick-apply h3 {
   margin: 0.55rem 0 0.25rem;
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
 .leave-card-header p,
 .leave-quick-apply p {
   margin: 0;
-  color: #64748b;
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
@@ -84,7 +81,7 @@
   position: absolute;
   inset: 56px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--bg-primary);
 }
 
 .leave-chart-center {
@@ -96,13 +93,13 @@
 }
 
 .leave-chart-center strong {
-  color: #0f172a;
+  color: var(--text-primary);
   font-size: 2.2rem;
   line-height: 1;
 }
 
 .leave-chart-center span {
-  color: #64748b;
+  color: var(--text-secondary);
   margin-top: 0.35rem;
 }
 
@@ -117,17 +114,17 @@
   gap: 0.85rem;
   padding: 0.95rem 1rem;
   border-radius: 18px;
-  background: #ffffff;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
 }
 
 .leave-legend-item strong {
   display: block;
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
 .leave-legend-item small {
-  color: #64748b;
+  color: var(--text-secondary);
 }
 
 .legend-dot {
