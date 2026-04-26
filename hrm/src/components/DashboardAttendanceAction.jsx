@@ -38,12 +38,8 @@ const CHECK_OUT = gql`
 `;
 
 function getTodayIST() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
+  // Pure UTC offset math — reliable on ALL OS/browser/locale combos.
+  return new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().split("T")[0];
 }
 
 function formatDisplayDate(dateStr) {
@@ -59,22 +55,18 @@ function formatDisplayDate(dateStr) {
 
 function parseAttendanceTimestamp(value) {
   if (!value) return null;
-  const raw = String(value).trim();
-  const normalized =
-    /(?:Z|[+-]\d{2}:\d{2})$/i.test(raw) || !raw.includes("T") ? raw : `${raw}Z`;
-  const parsed = new Date(normalized);
+  // Backend always returns full ISO strings — new Date() handles them correctly.
+  const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function formatTime(isoStr) {
   const parsed = parseAttendanceTimestamp(isoStr);
-  if (!parsed) return "--:--";
-  return parsed.toLocaleTimeString("en-IN", {
-    timeZone: "Asia/Kolkata",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+  if (!parsed) return "—";
+  // Manual IST offset — toLocaleTimeString is broken on Windows machines
+  const ist = new Date(parsed.getTime() + 5.5 * 60 * 60 * 1000);
+  const h = ist.getUTCHours(); const m = ist.getUTCMinutes();
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "pm" : "am"}`;
 }
 
 function formatHoursLabel(todayRec, nowTick) {

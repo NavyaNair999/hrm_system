@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
+import { isFormattedExecutionResult } from "@apollo/client/utilities";
 
 
 const ATTENDANCE_QUERY = gql`
@@ -38,35 +39,27 @@ const CHECK_OUT = gql`
   }
 `;
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getTodayIST() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
+  // Pure UTC offset math — reliable on ALL OS/browser/locale combos.
+  return new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().split("T")[0];
 }
 
 function parseAttendanceTimestamp(value) {
   if (!value) return null;
-  const raw = String(value).trim();
-  const normalized =
-    /(?:Z|[+-]\d{2}:\d{2})$/i.test(raw) || !raw.includes("T") ? raw : `${raw}Z`;
-  const parsed = new Date(normalized);
+  // Backend always returns full ISO strings — new Date() handles them correctly.
+  const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function formatTime(isoStr) {
   const parsed = parseAttendanceTimestamp(isoStr);
   if (!parsed) return "—";
-  return parsed.toLocaleTimeString("en-IN", {
-    timeZone: "Asia/Kolkata",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+  // Manual IST offset — toLocaleTimeString is broken on Windows machines
+  const ist = new Date(parsed.getTime() + 5.5 * 60 * 60 * 1000);
+  const h = ist.getUTCHours(); const m = ist.getUTCMinutes();
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "pm" : "am"}`;
 }
 
 function formatDate(dateStr) {
@@ -181,17 +174,17 @@ export default function AttendancePanel() {
         </div>
 
         <div style={styles.heroTimeRow}>
-          <div style={styles.heroTimeBlock}>
-            <div style={styles.heroTimeLabel}>Check In</div>
-            <div style={styles.heroTimeValue}>
-              {todayRec?.checkIn ? formatTime(todayRec.checkIn) : "—"}
-            </div>
+        <div style={styles.heroTimeBlock}>
+          <div style={styles.heroTimeLabel}>Check In</div>
+          <div style={styles.heroTimeValue}>
+            {todayRec?.checkIn ? formatLocalTime(todayRec.checkIn) : "—"}
           </div>
+        </div>
           <div style={styles.heroTimeDivider} />
           <div style={styles.heroTimeBlock}>
             <div style={styles.heroTimeLabel}>Check Out</div>
             <div style={styles.heroTimeValue}>
-              {todayRec?.checkOut ? formatTime(todayRec.checkOut) : "—"}
+              {todayRec?.checkOut ? formatLocalTime(todayRec.checkOut) : "—"}
             </div>
           </div>
           <div style={styles.heroTimeDivider} />
@@ -286,12 +279,12 @@ export default function AttendancePanel() {
                     </td>
                     <td style={styles.td}>
                       <span style={rec.checkIn ? styles.timeIn : styles.timeDash}>
-                        {formatTime(rec.checkIn)}
+                        {formatLocalTime(rec.checkIn)}
                       </span>
                     </td>
                     <td style={styles.td}>
                       <span style={rec.checkOut ? styles.timeOut : styles.timeDash}>
-                        {formatTime(rec.checkOut)}
+                        {formatLocalTime(rec.checkOut)}
                       </span>
                     </td>
                     <td style={styles.td}>

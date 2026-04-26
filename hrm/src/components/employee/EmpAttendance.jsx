@@ -109,44 +109,48 @@ const MONTHS = [
   "December",
 ];
 
+
+const formatLocalTime = (utcString) => {
+  if (!utcString || utcString === "--:--") return "--:--";
+  // The 'Z' ensures the browser treats it as UTC and converts to your local IST
+  const date = new Date(utcString); 
+  return date.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
+
+
 function parseAttendanceTimestamp(value) {
   if (!value) return null;
-  const raw = String(value).trim();
-  const normalized =
-    /(?:Z|[+-]\d{2}:\d{2})$/i.test(raw) || !raw.includes("T") ? raw : `${raw}Z`;
-  const parsed = new Date(normalized);
+  // Backend always returns full ISO strings — new Date() handles them correctly.
+  const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function formatTime(iso) {
   const parsed = parseAttendanceTimestamp(iso);
   if (!parsed) return "--";
-  return parsed.toLocaleTimeString("en-IN", {
-    timeZone: "Asia/Kolkata",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+  // Manual IST offset — toLocaleTimeString is broken on Windows machines
+  const ist = new Date(parsed.getTime() + 5.5 * 60 * 60 * 1000);
+  const h = ist.getUTCHours(); const m = ist.getUTCMinutes();
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "pm" : "am"}`;
 }
 
 function toTimeInputValue(iso) {
   const parsed = parseAttendanceTimestamp(iso);
   if (!parsed) return "";
-  return parsed.toLocaleTimeString("en-GB", {
-    timeZone: "Asia/Kolkata",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  // Manual IST offset — toLocaleTimeString("en-GB") broken on Windows
+  const ist = new Date(parsed.getTime() + 5.5 * 60 * 60 * 1000);
+  const h = String(ist.getUTCHours()).padStart(2, "0");
+  const m = String(ist.getUTCMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
 }
 
 function getTodayIST() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
+  // Pure UTC offset math — reliable on ALL OS/browser/locale combos.
+  return new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().split("T")[0];
 }
 
 function getDayName(date) {
@@ -162,7 +166,8 @@ function buildMonthRows(year, monthIndex, attendanceRecords, leaveRequests, holi
 
   for (let day = 1; day <= totalDays; day += 1) {
     const date = new Date(year, monthIndex, day);
-    const dateKey = date.toLocaleDateString("en-CA");
+    // Use UTC offset math — toLocaleDateString("en-CA") is broken on Windows
+    const dateKey = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split("T")[0];
     const attendance = attendanceMap.get(dateKey) || null;
     const holidayRemark = holidayMap.get(dateKey) || null;
     const leave = approvedLeaves.find(
@@ -290,8 +295,8 @@ function AttendanceLog({
               <tr key={row.dateKey}>
                 <td>{row.dateKey}</td>
                 <td>{row.dayName}</td>
-                <td>{formatTime(row.checkIn)}</td>
-                <td>{formatTime(row.checkOut)}</td>
+                <td>{formatLocalTime(row.checkIn)}</td>
+                <td>{formatLocalTime(row.checkOut)}</td>
                 <td>{Number(row.totalHours).toFixed(2)}</td>
                 <td>{row.remarks || "--"}</td>
                 <td>

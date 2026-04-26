@@ -9,10 +9,26 @@
 //   onBack   – optional callback for the back button
 //              admin: () => setTab("userList")
 //              employee: not needed (no back button shown)
+//
+// ── PHOTO CHANGES ────────────────────────────────────────────────────────────
+//   • Imported useProfilePhoto hook and ProfilePhotoAvatar component from
+//     ./useProfilePhoto  (all upload/compress/store logic lives there).
+//   • Replaced the hand-crafted initials <div> in the header with
+//     <ProfilePhotoAvatar> which handles photo, initials-fallback and
+//     the edit/delete overlay (desktop hover + mobile tap).
+//   • Added a hidden <input type="file"> wired to the hook's fileInputRef
+//     and handleFileChange.
+//   • Wired the "📷 Change Photo" gear-menu item to openPicker() instead
+//     of the old "coming soon" toast.
+//   • Photo error (e.g. wrong file type) is surfaced via the existing Toast.
+// ─────────────────────────────────────────────────────────────────────────────
 
 import { useState } from "react";
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
+
+// ── NEW: import photo hook + avatar component from the dedicated file ──────
+import { useProfilePhoto, ProfilePhotoAvatar } from "./Useprofilephoto";
 
 // ─── GraphQL ──────────────────────────────────────────────────────────────────
 
@@ -79,11 +95,8 @@ const UPDATE_EMPLOYEE_DETAILS = gql`
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function initials(name) {
-  if (!name) return "?";
-  return name.split(/[\s._]/).map((n) => n[0]).join("").toUpperCase().slice(0, 2);
-}
-
+// NOTE: avatarColor is no longer used in the header (ProfilePhotoAvatar owns
+// colouring), but kept for ReportingCard which still uses it.
 function avatarColor(name) {
   const colors = [
     { bg: "#fdecea", fg: "#c0392b" },
@@ -94,6 +107,12 @@ function avatarColor(name) {
   ];
   const i = (name || "").charCodeAt(0) % colors.length;
   return colors[i];
+}
+
+// NOTE: initials helper also kept for ReportingCard
+function initials(name) {
+  if (!name) return "?";
+  return name.split(/[\s._]/).map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 }
 
 function formatDate(d) {
@@ -210,7 +229,6 @@ function GeneralInfoTab({ employee, isAdmin, onSave }) {
           General Information
         </h3>
 
-        {/* Edit button only for admin */}
         {isAdmin && !editing && (
           <button
             onClick={() => setEditing(true)}
@@ -242,7 +260,6 @@ function GeneralInfoTab({ employee, isAdmin, onSave }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 32px" }}>
-        {/* Left */}
         <div>
           <FieldRow label="Employee Number" value={employee.employeeNumber} highlight />
           <FieldRow label="Full Name"        value={employee.username} />
@@ -250,11 +267,9 @@ function GeneralInfoTab({ employee, isAdmin, onSave }) {
           <FieldRow label="Department"       value={employee.department} />
         </div>
 
-        {/* Right */}
         <div>
           <FieldRow label="Date of Joining (DOJ)" value={formatDate(employee.joiningDate)} />
 
-          {/* DOB */}
           {isAdmin && editing ? (
             <div style={{ padding: "10px 0", borderBottom: "1px solid var(--border-color,#f0f0f0)" }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px" }}>Date of Birth</label>
@@ -265,7 +280,6 @@ function GeneralInfoTab({ employee, isAdmin, onSave }) {
             <FieldRow label="Date of Birth (DOB)" value={formatDate(employee.dateOfBirth)} />
           )}
 
-          {/* Schedule Type */}
           {isAdmin && editing ? (
             <div style={{ padding: "10px 0", borderBottom: "1px solid var(--border-color,#f0f0f0)" }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px" }}>Schedule Type</label>
@@ -282,7 +296,6 @@ function GeneralInfoTab({ employee, isAdmin, onSave }) {
             <FieldRow label="Schedule Type" value={employee.scheduleType} />
           )}
 
-          {/* Biometric ID — admin only (sensitive) */}
           {isAdmin ? (
             editing ? (
               <div style={{ padding: "10px 0", borderBottom: "1px solid var(--border-color,#f0f0f0)" }}>
@@ -294,7 +307,7 @@ function GeneralInfoTab({ employee, isAdmin, onSave }) {
             ) : (
               <FieldRow label="Biometric ID" value={employee.biometricId} />
             )
-          ) : null /* employees don't see biometric ID */ }
+          ) : null}
         </div>
       </div>
     </div>
@@ -381,7 +394,6 @@ function PositionTab({ employee, allUsers, isAdmin, onSave, refetch }) {
     }
   }
 
-  // Build sorted combined timeline (DOJ entry + history)
   const timeline = [
     {
       id: "origin",
@@ -544,7 +556,9 @@ function PositionTab({ employee, allUsers, isAdmin, onSave, refetch }) {
 
 // ─── Gear Menu (admin only) ───────────────────────────────────────────────────
 
-function GearMenu({ employee, onToast, onClose }) {
+// ── PHOTO CHANGE: openPhotoPicker is now passed in as a prop so the gear menu
+//    can trigger the file picker directly instead of showing a "coming soon" toast.
+function GearMenu({ employee, onToast, onClose, openPhotoPicker }) {
   const [showResetPwd, setShowResetPwd] = useState(false);
   const [newPassword,  setNewPassword]  = useState("");
   const [resetPwd, { loading }] = useMutation(RESET_PASSWORD);
@@ -563,7 +577,11 @@ function GearMenu({ employee, onToast, onClose }) {
   }
 
   const menuItems = [
-    { label: "📷  Change Photo",      action: () => { onToast("Photo upload — coming soon"); onClose(); } },
+    {
+      label:  "📷  Change Photo",
+      // ── PHOTO CHANGE: call openPhotoPicker instead of the old "coming soon" toast
+      action: () => { onClose(); openPhotoPicker(); },
+    },
     { label: "🔑  Reset Password",    action: () => setShowResetPwd(true) },
     { label: "🛡️  Edit Permissions",  action: () => { onToast("Permissions editor — coming soon"); onClose(); } },
   ];
@@ -640,8 +658,31 @@ export default function EmployeeProfile({ userId, isAdmin, onBack }) {
     skip: !isAdmin,
   });
 
+  // ── PHOTO CHANGE: initialise the photo hook.
+  //    Both admin and the employee themselves can edit their own photo,
+  //    so canEdit is always true here (profile is only rendered for the
+  //    owner or an admin, never for a third party).
+  const {
+    photoUrl,
+    uploading,
+    error:    photoError,
+    fileInputRef,
+    openPicker,
+    handleFileChange,
+    handleDelete,
+  } = useProfilePhoto(userId, /* canEdit = */ true);
+
   function showToast(msg) {
     setToast(msg);
+    setTimeout(() => setToast(""), 3500);
+  }
+
+  // ── PHOTO CHANGE: surface photo errors through the shared Toast ──────────
+  // Watch photoError and push it to the toast whenever it changes.
+  // We use a simple comparison rather than useEffect to keep the pattern
+  // consistent with the rest of the file (no extra React imports needed).
+  if (photoError && toast !== photoError) {
+    setToast(photoError);
     setTimeout(() => setToast(""), 3500);
   }
 
@@ -652,8 +693,6 @@ export default function EmployeeProfile({ userId, isAdmin, onBack }) {
   const employee = data?.employeeById;
   if (!employee) return <div style={{ padding: 40, color: "#aaa" }}>Employee not found.</div>;
 
-  const av = avatarColor(employee.username);
-
   return (
     <div style={{ maxWidth: 1000, margin: "0 auto" }}>
       <style>{`
@@ -663,7 +702,7 @@ export default function EmployeeProfile({ userId, isAdmin, onBack }) {
         }
       `}</style>
 
-      {/* Back button — only shown to admin (employee has sidebar nav) */}
+      {/* Back button — only shown to admin */}
       {isAdmin && onBack && (
         <button
           onClick={onBack}
@@ -687,19 +726,32 @@ export default function EmployeeProfile({ userId, isAdmin, onBack }) {
         display: "flex", alignItems: "center", gap: 22,
         position: "relative",
       }}>
-        {/* Avatar */}
-        <div style={{
-          width: 72, height: 72, borderRadius: "50%", flexShrink: 0,
-          background: av.bg, color: av.fg,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontWeight: 800, fontSize: 26,
-          border: `3px solid ${av.fg}22`,
-          boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-        }}>
-          {initials(employee.username)}
-        </div>
 
-        {/* Core info */}
+        {/* ── PHOTO CHANGE: replaced old hand-crafted initials <div> with
+              <ProfilePhotoAvatar> which handles photo/initials/overlay. ── */}
+        <ProfilePhotoAvatar
+          name={employee.username}
+          size={72}
+          canEdit={true}           // both admin and employee may change their photo
+          photoUrl={photoUrl}
+          uploading={uploading}
+          onEdit={openPicker}      // 📷 icon → opens file picker
+          onDelete={handleDelete}  // 🗑️ icon → removes photo
+        />
+
+        {/* ── PHOTO CHANGE: hidden file input – accepts images, works on mobile
+              (the `capture` attribute is intentionally omitted so the user can
+              choose gallery OR camera on mobile, not just camera). ── */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          style={{ display: "none" }}
+          aria-label="Upload profile photo"
+        />
+
+        {/* Core info – unchanged */}
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "var(--text-primary,#111)" }}>
@@ -752,9 +804,14 @@ export default function EmployeeProfile({ userId, isAdmin, onBack }) {
             </button>
             {gearOpen && (
               <>
-                {/* click-outside overlay */}
                 <div onClick={() => setGearOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 499 }} />
-                <GearMenu employee={employee} onToast={showToast} onClose={() => setGearOpen(false)} />
+                {/* ── PHOTO CHANGE: pass openPicker so the gear-menu item works ── */}
+                <GearMenu
+                  employee={employee}
+                  onToast={showToast}
+                  onClose={() => setGearOpen(false)}
+                  openPhotoPicker={openPicker}
+                />
               </>
             )}
           </div>

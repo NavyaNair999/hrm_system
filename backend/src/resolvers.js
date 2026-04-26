@@ -887,89 +887,90 @@ teamMembers: async (_, __, { user }) => {
       return "User created successfully";
     },
 
-    checkIn: async (_, __, { user }) => {
-      if (!user) throw new Error("Unauthorized");
+    //changed by neha on 26/4/24 to handle check-in and check-out in IST timezone and return data in ISO format for frontend parsing 
+checkIn: async (_, __, { user }) => {
+  // 1. Guard check: Ensure user is actually logged in
+  if (!user || !user.id) {
+    throw new Error("Authentication required. Please log in again.");
+  }
 
-      // Use IST date — CURRENT_DATE in Postgres uses UTC which gives wrong date for IST users
-      const istDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  const userId = user.id;
+  const username = user.username;
 
-      const holiday = await pool.query(
-        "SELECT id FROM holidays WHERE holiday_date = $1", [istDate]
-      );
-      if (holiday.rows.length > 0) {
-        throw new Error("Today is a holiday");
-      }
+  try {
+    // 2. Perform the insertion
+    const result = await pool.query(
+      `INSERT INTO attendance (user_id, username, attendance_date, check_in)
+       VALUES ($1, $2, CURRENT_DATE AT TIME ZONE 'Asia/Kolkata', NOW() AT TIME ZONE 'Asia/Kolkata')
+       ON CONFLICT (user_id, attendance_date) 
+       DO UPDATE SET check_in = COALESCE(attendance.check_in, EXCLUDED.check_in)
+       RETURNING *`,
+      [userId, username]
+    );
 
-      const userRes = await pool.query(
-        "SELECT username FROM users WHERE id=$1",
-        [user.id]
-      );
-      const username = userRes.rows[0]?.username || "";
+    const row = result.rows[0];
 
-      const result = await pool.query(
-        `
-    INSERT INTO attendance (user_id, username, attendance_date, check_in)
-    VALUES ($1, $2, $3, NOW())
+    // 3. Return the formatted object
+    // .toISOString() ensures the frontend can parse the UTC time correctly
+    return {
+      id: row.id,
+      userId: row.user_id,
+      username: row.username,
+      date: row.attendance_date, 
+      checkIn: row.check_in ? row.check_in.toISOString() : null,
+      checkOut: row.check_out ? row.check_out.toISOString() : null,
+    };
+  } catch (error) {
+    console.error("Check-in error:", error);
+    throw new Error("Failed to record check-in.");
+  }
+},
 
-    ON CONFLICT (user_id, attendance_date)
-    DO UPDATE SET check_in = COALESCE(attendance.check_in, EXCLUDED.check_in)
-
-    RETURNING 
-      id,
-      attendance_date,
-      check_in,
-      check_out
-    `,
-        [user.id, username, istDate]
-      );
-
-      const row = result.rows[0];
-
-      return {
-        id: row.id,
-        date: pgDateToIST(row.attendance_date),
-        checkIn: row.check_in ? row.check_in.toISOString() : null,
-        checkOut: row.check_out ? row.check_out.toISOString() : null,
-      };
-    },
+    //changed by neha on 26/4/24 to handle check-in and check-out in IST timezone and return data in ISO format for frontend parsing 
 
     checkOut: async (_, __, { user }) => {
-      if (!user) throw new Error("Unauthorized");
+  // 1. Guard check: Ensure user is actually logged in
+  if (!user || !user.id) {
+    throw new Error("Authentication required. Please log in again.");
+  }
 
-      // Use IST date — same reason as checkIn
-      const istDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  // 2. Define userId from the context so it is not "undefined"
+  const userId = user.id;
 
-      const result = await pool.query(
-        `
-    UPDATE attendance
-    SET check_out = NOW()
-    WHERE user_id = $1
-      AND attendance_date = $2
-      AND check_in IS NOT NULL
-      AND check_out IS NULL
+  try {
+    // 3. Update the record for the current date in IST
+    const result = await pool.query(
+      `UPDATE attendance 
+       SET check_out = NOW() AT TIME ZONE 'Asia/Kolkata'
+       WHERE user_id = $1 
+         AND attendance_date = CURRENT_DATE AT TIME ZONE 'Asia/Kolkata'
+         AND check_out IS NULL
+       RETURNING *`,
+      [userId]
+    );
 
-    RETURNING 
-      id,
-      attendance_date,
-      check_in,
-      check_out
-    `,
-        [user.id, istDate]
-      );
+    if (result.rowCount === 0) {
+      throw new Error("No active check-in found for today or already checked out.");
+    }
 
-      if (result.rowCount === 0) {
-        throw new Error("No active check-in found");
-      }
+    const row = result.rows[0];
 
-      const row = result.rows[0];
-
-      return {
-        id: row.id,
-        date: pgDateToIST(row.attendance_date),
-        checkIn: row.check_in ? row.check_in.toISOString() : null,
-        checkOut: row.check_out ? row.check_out.toISOString() : null,
-      };
-    },
+    // 4. Return formatted object matching your GraphQL schema
+    return {
+      id: row.id,
+      userId: row.user_id,
+      username: row.username,
+      date: row.attendance_date, 
+      // .toISOString() allows your frontend formatLocalTime helper to work
+      checkIn: row.check_in ? row.check_in.toISOString() : null,
+      checkOut: row.check_out ? row.check_out.toISOString() : null,
+      hoursWorked: row.hours_worked || "0.00"
+    };
+  } catch (error) {
+    console.error("Check-out error:", error);
+    throw new Error(error.message || "Failed to record check-out.");
+  }
+},
 
     applyLeave: async (_, { type, startDate, endDate, days, reason }, { user }) => {
       if (!user) throw new Error("Unauthorized");
@@ -1486,4 +1487,3 @@ adminResetPassword: async (_, { userId, newPassword }, { user }) => {
 
   },
 };
-  
