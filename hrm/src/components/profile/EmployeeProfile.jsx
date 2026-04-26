@@ -26,8 +26,7 @@
 import { useState } from "react";
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
-
-// ── NEW: import photo hook + avatar component from the dedicated file ──────
+import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import { useProfilePhoto, ProfilePhotoAvatar } from "./Useprofilephoto";
 
 // ─── GraphQL ──────────────────────────────────────────────────────────────────
@@ -625,6 +624,7 @@ function PositionTab({ employee, allUsers, isAdmin, onSave, refetch }) {
 function GearMenu({ employee, onToast, onClose, openPhotoPicker }) {
   const [showResetPwd, setShowResetPwd] = useState(false);
   const [newPassword, setNewPassword] = useState("");
+   const [showPassword, setShowPassword] = useState(false); 
   const [resetPwd, { loading }] = useMutation(RESET_PASSWORD);
 
   async function handleReset() {
@@ -633,6 +633,7 @@ function GearMenu({ employee, onToast, onClose, openPhotoPicker }) {
       await resetPwd({ variables: { userId: employee.id, newPassword } });
       setShowResetPwd(false);
       setNewPassword("");
+         setShowPassword(false); 
       onClose();
       onToast("Password reset successfully");
     } catch (e) {
@@ -679,13 +680,35 @@ function GearMenu({ employee, onToast, onClose, openPhotoPicker }) {
       {showResetPwd && (
         <Modal title="Reset Password" onClose={() => setShowResetPwd(false)}>
           <p style={{ margin: "0 0 16px", fontSize: 13, color: "#555" }}>
-            Set a new password for <strong>{employee.username}</strong>.
-          </p>
-          <input
-            type="password" placeholder="New password" value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            style={{ width: "100%", padding: "10px 14px", border: "1px solid #e5c6c6", borderRadius: 8, fontSize: 13, boxSizing: "border-box", background: "var(--bg-primary,#fff)", color: "var(--text-primary,#111)" }}
-          />
+  Set a new password for <strong>{employee.username}</strong>.
+</p>
+<div style={{ position: "relative" }}>  {/* ← replace with this */}
+  <input
+    type={showPassword ? "text" : "password"}
+    placeholder="New password"
+    value={newPassword}
+    onChange={(e) => setNewPassword(e.target.value)}
+    style={{
+      width: "100%", padding: "10px 40px 10px 14px",
+      border: "1px solid #e5c6c6", borderRadius: 8,
+      fontSize: 13, boxSizing: "border-box",
+      background: "var(--bg-primary,#fff)", color: "var(--text-primary,#111)",
+    }}
+  />
+  <button
+    type="button"
+    onClick={() => setShowPassword((v) => !v)}
+    style={{
+      position: "absolute", right: 10, top: "50%",
+      transform: "translateY(-50%)",
+      background: "none", border: "none", cursor: "pointer",
+      padding: 0, color: "var(--text-tertiary, #aaa)",
+      display: "flex", alignItems: "center",
+    }}
+  >
+    {showPassword ? <AiOutlineEye size={18} /> : <AiOutlineEyeInvisible size={18} />}
+  </button>
+</div>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
             <button onClick={() => setShowResetPwd(false)} style={{ padding: "8px 20px", borderRadius: 8, border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: 13 }}>Cancel</button>
             <button onClick={handleReset} disabled={loading}
