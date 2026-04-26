@@ -835,14 +835,6 @@ export default function AdminSettings({ currentUser }) {
             </button>
           ))}
         </div>
-
-        <div className="card">
-          <div className="card-title">Admin-Controlled Configuration</div>
-          <div className="card-sub" style={{ marginBottom: 0 }}>
-            These settings are only for the admin side and all configuration is managed here.
-            Departments, designations, schedules, and reports can be controlled by admin from this module.
-          </div>
-        </div>
       </>
     );
   }

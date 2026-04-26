@@ -338,10 +338,6 @@ function AttendanceView({
   canRaiseAdjustment,
   onAdjust,
   isSelf,
-  isCheckedIn,
-  onCheckIn,
-  onCheckOut,
-  actionLoading,
 }) {
   const summary = useMemo(() => buildSummary(rows), [rows]);
   const years = useMemo(() => {
@@ -361,23 +357,6 @@ function AttendanceView({
           <div className="field"><label>Schedule Type</label><input value={employee?.scheduleType || "--"} disabled style={{ color: "var(--text-primary)" }} /></div>
         </div>
       </div>
-
-      {isSelf ? (
-        <div className="check-status-bar">
-          <div className={`cstatus-dot ${isCheckedIn ? "active" : ""}`} />
-          <div className="cstatus-text">{isCheckedIn ? "Checked In" : "Not Checked In Yet"}</div>
-          <div className="cstatus-spacer" />
-          {!isCheckedIn ? (
-            <button className="btn-primary" type="button" onClick={onCheckIn} disabled={actionLoading}>
-              {actionLoading ? "Updating..." : "Check In"}
-            </button>
-          ) : (
-            <button className="btn-primary" type="button" onClick={onCheckOut} disabled={actionLoading}>
-              {actionLoading ? "Updating..." : "Check Out"}
-            </button>
-          )}
-        </div>
-      ) : null}
 
       <div className="card">
         <div className="card-title">Monthly Selection & Summary</div>
@@ -617,10 +596,6 @@ export default function EmpAttendance({ currentUser }) {
           canRaiseAdjustment={true}
           onAdjust={setSelectedRecord}
           isSelf={true}
-          isCheckedIn={isCheckedIn}
-          onCheckIn={handleCheckIn}
-          onCheckOut={handleCheckOut}
-          actionLoading={actionLoading}
         />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -664,10 +639,6 @@ export default function EmpAttendance({ currentUser }) {
               canRaiseAdjustment={false}
               onAdjust={() => { }}
               isSelf={false}
-              isCheckedIn={false}
-              onCheckIn={() => { }}
-              onCheckOut={() => { }}
-              actionLoading={false}
             />
           ) : (
             <div className="card">

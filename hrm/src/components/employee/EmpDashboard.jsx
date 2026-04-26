@@ -76,14 +76,14 @@ export default function EmpDashboard({ currentUser, setTab }) {
                   <span className="legend-dot earned" />
                   <div>
                     <strong>Earned Leave</strong>
-                    <small>{earnedRemaining} remaining • {Math.round(earnedPercent)}%</small>
+                    <small>{earnedRemaining} remaining</small>
                   </div>
                 </div>
                 <div className="leave-legend-item">
                   <span className="legend-dot sick" />
                   <div>
                     <strong>Sick Leave</strong>
-                    <small>{sickLeaves} available • {Math.round(sickPercent)}%</small>
+                    <small>{sickLeaves} available</small>
                   </div>
                 </div>
               </div>

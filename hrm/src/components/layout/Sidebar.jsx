@@ -6,6 +6,8 @@ const ADMIN_ITEMS = [
   { id: "leaves", icon: "M", label: "Manage Leaves" },
   { id: "settings", icon: "S", label: "Settings" },
   { id: "userList", icon: "U", label: "User List" },
+  { id: "myProfile", icon: "P", label: "My Profile" },
+
 ];
 
 const EMPLOYEE_ITEMS = [

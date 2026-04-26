@@ -24,6 +24,15 @@ export default function AdminView({ tab, currentUser, setTab }) {
   if (tab === "applyLeave")  return <EmpApplyLeave />;
   if (tab === "settings")    return <AdminSettings currentUser={currentUser} />;
 
+  if (tab === "myProfile") {
+    return (
+      <EmployeeProfile
+        userId={currentUser.id}
+        isAdmin={true}
+      />
+    );
+  }
+
   if (tab === "userList") {
     return (
       <UserList
