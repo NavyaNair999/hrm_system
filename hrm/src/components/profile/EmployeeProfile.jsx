@@ -710,7 +710,11 @@ function GearMenu({ employee, onToast, onClose, openPhotoPicker }) {
   </button>
 </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-            <button onClick={() => setShowResetPwd(false)} style={{ padding: "8px 20px", borderRadius: 8, border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: 13 }}>Cancel</button>
+            <button onClick={() => setShowResetPwd(false)} style={{ 
+  background: "var(--bg-tertiary)", 
+  border: "1px solid var(--border-color)", 
+  color: "var(--text-primary)" 
+}}>Cancel</button>
             <button onClick={handleReset} disabled={loading}
               style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#c0392b", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
               {loading ? "Resetting…" : "Reset Password"}
