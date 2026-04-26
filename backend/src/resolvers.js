@@ -1444,15 +1444,16 @@ deleteWorkSchedule: async (_, { id }, { user }) => {
   return "Schedule deleted";
 },
 
-updateEmployeeDetails: async (_, { userId, dateOfBirth, scheduleType, biometricId }, { user }) => {
+updateEmployeeDetails: async (_, { userId, dateOfBirth, scheduleType, biometricId, department }, { user }) => {
   requireAdmin(user);
   await pool.query(
     `UPDATE users
      SET date_of_birth = COALESCE($1::date, date_of_birth),
          schedule_type = COALESCE($2, schedule_type),
-         biometric_id  = COALESCE($3, biometric_id)
-     WHERE id = $4`,
-    [dateOfBirth || null, scheduleType || null, biometricId || null, userId]
+         biometric_id  = COALESCE($3, biometric_id),
+         department    = COALESCE($4, department)
+     WHERE id = $5`,
+    [dateOfBirth || null, scheduleType || null, biometricId || null, department || null, userId]
   );
   return "Employee details updated";
 },

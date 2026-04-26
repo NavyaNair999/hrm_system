@@ -217,7 +217,7 @@ deleteLeave(leaveId: ID!): String
     setDesignationActive(id: ID!, isActive: Boolean!): String
     deleteDesignation(id: ID!): String
 
-    updateEmployeeDetails(userId: ID!, dateOfBirth: String, scheduleType: String, biometricId: String): String
+    updateEmployeeDetails(userId: ID!, dateOfBirth: String, scheduleType: String, biometricId: String, department: String): String
     changePosition(userId: ID!, newDesignation: String!, effectiveDate: String!, reason: String!): String
     updateReporting(userId: ID!, reportsToId: ID, directReporting2Id: ID): String
     adminResetPassword(userId: ID!, newPassword: String!): String
