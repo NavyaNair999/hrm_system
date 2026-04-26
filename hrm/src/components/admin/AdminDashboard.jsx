@@ -14,11 +14,10 @@ const LEAVE_BALANCE = gql`
   }
 `;
 
-const ALL_LEAVES = gql`
-  query GetAllLeaves {
-    allLeaves {
+const PENDING_APPROVALS = gql`
+  query GetPendingApprovals {
+    pendingApprovals {
       id
-      username
       status
     }
   }
@@ -35,7 +34,7 @@ const ATTENDANCE_REQUESTS = gql`
 
 export default function AdminDashboard({ currentUser, setTab }) {
   const { data: leaveData, loading: leaveLoading } = useQuery(LEAVE_BALANCE);
-  const { data: allLeavesData, loading: approvalLoading } = useQuery(ALL_LEAVES);
+  const { data: allLeavesData, loading: approvalLoading } = useQuery(PENDING_APPROVALS);
   const { data: attendanceData } = useQuery(ATTENDANCE_REQUESTS);
 
   const balance = leaveData?.leaveBalance;
@@ -44,7 +43,7 @@ export default function AdminDashboard({ currentUser, setTab }) {
   const remainingLeaves = Math.max(0, totalLeaves - usedLeaves);
 
   const pendingLeaveCount =
-    allLeavesData?.allLeaves?.filter((leave) => leave.status === "Pending").length ?? 0;
+    allLeavesData?.pendingApprovals?.filter((leave) => leave.status === "Pending").length ?? 0;
   const pendingAttendanceCount =
     attendanceData?.attendanceRequests?.filter((request) => request.status === "Pending")
       .length ?? 0;
