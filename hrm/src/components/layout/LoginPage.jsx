@@ -10,7 +10,9 @@ export default function LoginPage({ form, setForm, onSubmit, error }) {
 
   return (
     <div className="login-card">
-      <div className="login-logo">HR</div>
+      <div className="login-logo">
+        <img src="/Vector.png" alt="HRM System Logo" className="login-logo-img" />
+      </div>
       <h1 className="login-title">HRM Portal</h1>
       <p className="login-sub">Sign in to access your dashboard</p>
 
