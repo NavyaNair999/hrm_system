@@ -17,7 +17,9 @@ export default function Header({ user, onLogout, isAdmin, onHamburger, onThemeTo
         <button className="hamburger" onClick={onHamburger}>
           ☰
         </button>
-        <div className="hrm-brand-logo">IV</div>
+        <div className="hrm-brand-logo">
+          <img src="/Vector.png" alt="HRM System Logo" className="hrm-brand-logo-img" />
+        </div>
         <div>
           <div className="hrm-brand-name">INFIDHI VENTURES PVT. LTD.</div>
           <div className="hrm-brand-sub">

@@ -43,5 +43,7 @@ export default function AdminView({ tab, currentUser, setTab }) {
     );
   }
 
+  if (tab === "leaves")       return <ManageLeaves />;
+
   return null;
 }

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
+import ToastPopup from "../ui/ToastPopup";
 
 const CREATE_USER = gql`
   mutation CreateUser(
@@ -212,6 +213,7 @@ export default function AddEmployee() {
       setTimeout(() => setSuccess(""), 3500);
     } catch (error) {
       setErrors({ submit: error.message });
+      setTimeout(() => setErrors((current) => ({ ...current, submit: "" })), 3500);
     }
   }
 
@@ -225,20 +227,13 @@ export default function AddEmployee() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <ToastPopup
+        message={success || errors.submit}
+        type={success ? "success" : "error"}
+      />
       <div className="card" style={{ maxWidth: 560, width: "100%" }}>
         <div className="card-title">New Employee Details</div>
         <div className="card-sub">Fill in the details to create a new employee account</div>
-
-        {success && (
-          <div style={{ background: "#e8f8ef", color: "#1a7a4a", borderRadius: 8, padding: "10px 14px", fontSize: 13, marginBottom: 12 }}>
-            {success}
-          </div>
-        )}
-        {errors.submit && (
-          <div style={{ background: "#fdf4f4", color: "#c0392b", borderRadius: 8, padding: "10px 14px", fontSize: 13, marginBottom: 12 }}>
-            {errors.submit}
-          </div>
-        )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={sectionTitle}>Account</div>

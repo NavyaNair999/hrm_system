@@ -24,6 +24,7 @@ module.exports = gql`
     scheduleType: String
     biometricId: String
     positionHistory: [PositionHistory]
+    isReportingManager: Boolean
   }
 
   type Attendance {
@@ -56,6 +57,7 @@ module.exports = gql`
     days: Int
     reason: String
     status: String
+    managerRemark: String
     applicationDate: String
   }
 
@@ -182,7 +184,7 @@ module.exports = gql`
     checkOut: Attendance
 
     applyLeave(type: String!, startDate: String!, endDate: String!, days: Int!, reason: String!): String
-    updateLeaveStatus(leaveId: ID!, status: String!): String
+    updateLeaveStatus(leaveId: ID!, status: String!, remark: String): String
 
     setWorkingHours(monday: String, tuesday: String, wednesday: String, thursday: String, friday: String, saturday: String): String
     setLeave(userId: ID!, paid: Int, casual: Int, wfh: Int): String
@@ -248,4 +250,10 @@ deleteLeave(leaveId: ID!): String
     setWorkScheduleActive(id: ID!, isActive: Boolean!): String
     deleteWorkSchedule(id: ID!): String
   }
+
+  extend type Query {
+  pendingApprovals: [LeaveRequest]
+}
+
+
 `;
