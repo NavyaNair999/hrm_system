@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
+import ToastPopup from "../ui/ToastPopup";
 
 const LEAVE_BALANCE = gql`
   query LeaveBalance {
@@ -280,6 +281,7 @@ export default function EmpApplyLeave() {
       setTimeout(() => setSuccess(""), 3500);
     } catch (err) {
       setErrors({ submit: err.message });
+      setTimeout(() => setErrors((current) => ({ ...current, submit: "" })), 3500);
     }
   }
 
@@ -340,6 +342,10 @@ export default function EmpApplyLeave() {
 
   return (
     <div style={{ padding: "0 0 40px" }}>
+      <ToastPopup
+        message={success || errors.submit}
+        type={success ? "success" : "error"}
+      />
 
       {/* ── Page Header ── */}
       <div className="page-header">
@@ -419,28 +425,6 @@ export default function EmpApplyLeave() {
               )}
             </div>
 
-            {/* Alerts */}
-            {success && (
-              <div style={{
-                background: "#f0fdf4", color: "#15803d",
-                border: "1px solid #bbf7d0",
-                borderRadius: 10, padding: "12px 16px",
-                fontSize: 13, fontWeight: 500, marginBottom: 20,
-                display: "flex", alignItems: "center", gap: 8,
-              }}>
-                <span>✅</span> {success}
-              </div>
-            )}
-            {errors.submit && (
-              <div style={{
-                background: "#fef2f2", color: "#dc2626",
-                border: "1px solid #fecaca",
-                borderRadius: 10, padding: "12px 16px",
-                fontSize: 13, marginBottom: 20,
-              }}>
-                ⚠️ {errors.submit}
-              </div>
-            )}
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {/* Leave Type */}
