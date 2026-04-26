@@ -1,3 +1,5 @@
+import { FiMoon, FiSun } from "react-icons/fi";
+
 function initials(name) {
   if (!name) return "?";
   return name
@@ -34,7 +36,7 @@ export default function Header({ user, onLogout, isAdmin, onHamburger, onThemeTo
             onClick={onThemeToggle}
             title={isDarkTheme ? "Switch to Light Mode" : "Switch to Dark Mode"}
           >
-            {isDarkTheme ? "☀️" : "🌙"}
+            {isDarkTheme ? <FiSun size={18} /> : <FiMoon size={18} />}
           </button>
         )}
         <div className="hrm-user-pill">
