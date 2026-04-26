@@ -113,7 +113,7 @@ const MONTHS = [
 const formatLocalTime = (utcString) => {
   if (!utcString || utcString === "--:--") return "--:--";
   // The 'Z' ensures the browser treats it as UTC and converts to your local IST
-  const date = new Date(utcString); 
+  const date = new Date(utcString);
   return date.toLocaleTimeString('en-IN', {
     hour: '2-digit',
     minute: '2-digit',
@@ -347,11 +347,11 @@ function AttendanceView({
       <div className="card">
         <div className="card-title">Employee Context</div>
         <div className="form-grid" style={{ gap: 16 }}>
-          <div className="field"><label>Employee Number</label><input value={employee?.employeeNumber || "--"} disabled /></div>
-          <div className="field"><label>Name</label><input value={employee?.username || "--"} disabled /></div>
-          <div className="field"><label>Designation</label><input value={employee?.designation || "--"} disabled /></div>
-          <div className="field"><label>Department</label><input value={employee?.department || "--"} disabled /></div>
-          <div className="field"><label>Schedule Type</label><input value={employee?.scheduleType || "--"} disabled /></div>
+          <div className="field"><label>Employee Number</label><input value={employee?.employeeNumber || "--"} disabled style={{ color: "var(--text-primary)" }} /></div>
+          <div className="field"><label>Name</label><input value={employee?.username || "--"} disabled style={{ color: "var(--text-primary)" }} /></div>
+          <div className="field"><label>Designation</label><input value={employee?.designation || "--"} disabled style={{ color: "var(--text-primary)" }} /></div>
+          <div className="field"><label>Department</label><input value={employee?.department || "--"} disabled style={{ color: "var(--text-primary)" }} /></div>
+          <div className="field"><label>Schedule Type</label><input value={employee?.scheduleType || "--"} disabled style={{ color: "var(--text-primary)" }} /></div>
         </div>
       </div>
 
@@ -649,11 +649,11 @@ export default function EmpAttendance({ currentUser }) {
               setMonth={setSelectedMonth}
               setYear={setSelectedYear}
               canRaiseAdjustment={false}
-              onAdjust={() => {}}
+              onAdjust={() => { }}
               isSelf={false}
               isCheckedIn={false}
-              onCheckIn={() => {}}
-              onCheckOut={() => {}}
+              onCheckIn={() => { }}
+              onCheckOut={() => { }}
               actionLoading={false}
             />
           ) : (

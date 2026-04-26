@@ -88,7 +88,7 @@ export default function AdminDashboard({ currentUser, setTab }) {
           <span className="summary-footnote">Available for future requests</span>
         </article>
 
-        
+
       </section>
 
       <DashboardAttendanceAction title="Attendance action" />

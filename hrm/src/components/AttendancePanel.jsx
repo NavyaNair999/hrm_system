@@ -64,7 +64,7 @@ function formatTime(isoStr) {
 
 function formatDate(dateStr) {
   const [y, m, d] = dateStr.split("-").map(Number);
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   return `${d} ${months[m - 1]} ${y}`;
 }
 
@@ -86,7 +86,7 @@ export default function AttendancePanel() {
     awaitRefetchQueries: true,
   };
 
-  const [checkInMut]  = useMutation(CHECK_IN,  mutationOptions);
+  const [checkInMut] = useMutation(CHECK_IN, mutationOptions);
   const [checkOutMut] = useMutation(CHECK_OUT, mutationOptions);
 
   const attendanceMap = useMemo(() => {
@@ -99,9 +99,9 @@ export default function AttendancePanel() {
     return map;
   }, [data]);
 
-  const todayRec    = attendanceMap[todayStr] ?? null;
+  const todayRec = attendanceMap[todayStr] ?? null;
   const isCheckedIn = !!(todayRec?.checkIn && !todayRec?.checkOut);
-  const isDone      = !!(todayRec?.checkOut);
+  const isDone = !!(todayRec?.checkOut);
 
   const btnLabel = isDone ? "Done ✓" : isCheckedIn ? "Check Out" : "Check In";
 
@@ -149,8 +149,8 @@ export default function AttendancePanel() {
   const statusConfig = isDone
     ? { label: "Day Completed", dot: "#22c55e", bg: "rgba(34,197,94,0.08)", icon: "✅" }
     : isCheckedIn
-    ? { label: "Currently Working", dot: "#f97316", bg: "rgba(249,115,22,0.08)", icon: "🟢" }
-    : { label: "Not Checked In Yet", dot: "#9ca3af", bg: "rgba(156,163,175,0.08)", icon: "⚪" };
+      ? { label: "Currently Working", dot: "#f97316", bg: "rgba(249,115,22,0.08)", icon: "🟢" }
+      : { label: "Not Checked In Yet", dot: "#9ca3af", bg: "rgba(156,163,175,0.08)", icon: "⚪" };
 
   return (
     <div style={styles.wrapper}>
@@ -174,12 +174,12 @@ export default function AttendancePanel() {
         </div>
 
         <div style={styles.heroTimeRow}>
-        <div style={styles.heroTimeBlock}>
-          <div style={styles.heroTimeLabel}>Check In</div>
-          <div style={styles.heroTimeValue}>
-            {todayRec?.checkIn ? formatLocalTime(todayRec.checkIn) : "—"}
+          <div style={styles.heroTimeBlock}>
+            <div style={styles.heroTimeLabel}>Check In</div>
+            <div style={styles.heroTimeValue}>
+              {todayRec?.checkIn ? formatLocalTime(todayRec.checkIn) : "—"}
+            </div>
           </div>
-        </div>
           <div style={styles.heroTimeDivider} />
           <div style={styles.heroTimeBlock}>
             <div style={styles.heroTimeLabel}>Check Out</div>
@@ -206,8 +206,8 @@ export default function AttendancePanel() {
             ...(isDone
               ? styles.actionBtnDone
               : isCheckedIn
-              ? styles.actionBtnOut
-              : styles.actionBtnIn),
+                ? styles.actionBtnOut
+                : styles.actionBtnIn),
           }}
         >
           {btnLoading ? (
@@ -257,10 +257,10 @@ export default function AttendancePanel() {
                 const status = rec.isHoliday
                   ? { label: "Holiday", color: "#8b5cf6", bg: "rgba(139,92,246,0.1)" }
                   : rec.checkIn
-                  ? rec.checkOut
-                    ? { label: "Done", color: "#22c55e", bg: "rgba(34,197,94,0.1)" }
-                    : { label: "Working", color: "#f97316", bg: "rgba(249,115,22,0.1)" }
-                  : { label: "Absent", color: "#ef4444", bg: "rgba(239,68,68,0.1)" };
+                    ? rec.checkOut
+                      ? { label: "Done", color: "#22c55e", bg: "rgba(34,197,94,0.1)" }
+                      : { label: "Working", color: "#f97316", bg: "rgba(249,115,22,0.1)" }
+                    : { label: "Absent", color: "#ef4444", bg: "rgba(239,68,68,0.1)" };
 
                 return (
                   <tr
