@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
-import { isFormattedExecutionResult } from "@apollo/client/utilities";
 
 
 const ATTENDANCE_QUERY = gql`
@@ -53,7 +52,7 @@ function parseAttendanceTimestamp(value) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function formatTime(isoStr) {
+function formatLocalTime(isoStr) {
   const parsed = parseAttendanceTimestamp(isoStr);
   if (!parsed) return "—";
   // Manual IST offset — toLocaleTimeString is broken on Windows machines
