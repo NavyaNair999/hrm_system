@@ -37,8 +37,10 @@ function toCsvValue(value) {
   return safe;
 }
 
+
 export default function EmployeeReports() {
   const [filters, setFilters] = useState(getMonthRange);
+  const today = new Date().toISOString().split("T")[0];
   const [runReport, { data, loading, error, called }] = useLazyQuery(EMPLOYEE_ATTENDANCE_SUMMARY, {
     fetchPolicy: "network-only",
   });
@@ -58,16 +60,19 @@ export default function EmployeeReports() {
     );
   }, [rows]);
 
-  function generateReport(event) {
-    event.preventDefault();
-    runReport({
-      variables: {
-        startDate: filters.startDate,
-        endDate: filters.endDate,
-      },
-    });
+ function generateReport(event) {
+  event.preventDefault();
+  if (filters.startDate > today || filters.endDate > today) {
+    alert("Report cannot be generated for future dates.");
+    return;
   }
-
+  runReport({
+    variables: {
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+    },
+  });
+}
   function downloadReport() {
     if (!rows.length) return;
 
@@ -127,6 +132,7 @@ export default function EmployeeReports() {
               <input
                 type="date"
                 value={filters.startDate}
+                 max={today}  
                 onChange={(event) => setFilters((current) => ({ ...current, startDate: event.target.value }))}
                 required
               />
@@ -136,6 +142,7 @@ export default function EmployeeReports() {
               <input
                 type="date"
                 value={filters.endDate}
+                  max={today}                          
                 onChange={(event) => setFilters((current) => ({ ...current, endDate: event.target.value }))}
                 required
               />
