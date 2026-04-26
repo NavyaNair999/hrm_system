@@ -3,22 +3,23 @@ import EmpAttendance   from "./EmpAttendance";
 import EmpApplyLeave   from "./EmpApplyLeave";
 import EmpNotifications from "./EmpNotifications";
 import EmployeeProfile from "../profile/EmployeeProfile"; 
+import ManageLeaves from "../admin/ManageLeaves"; 
 
 export default function EmployeeView({ tab, currentUser, setTab }) {
   if (tab === "dashboard")     return <EmpDashboard currentUser={currentUser} setTab={setTab} />;
   if (tab === "attendance")    return <EmpAttendance currentUser={currentUser} />;
   if (tab === "applyLeave")    return <EmpApplyLeave />;
   if (tab === "notifications") return <EmpNotifications />;
+  if (tab === "leaves")       return <ManageLeaves />;
 
   // Employee views their own profile — read-only, no back button needed
   if (tab === "myProfile") {
     return (
       <EmployeeProfile
         userId={currentUser.id}
-        isAdmin={false}           // read-only mode
+        isAdmin={false}          
       />
     );
   }
-
   return null;
 }

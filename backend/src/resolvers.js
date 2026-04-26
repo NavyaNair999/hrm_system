@@ -13,8 +13,14 @@ pool.query(`
     end_date DATE,
     days INTEGER,
     reason TEXT,
-    status VARCHAR(20) DEFAULT 'Pending'
+    status VARCHAR(20) DEFAULT 'Pending',
+    manager_remark TEXT
   )
+`).catch(console.error);
+
+pool.query(`
+  ALTER TABLE leave_requests
+    ADD COLUMN IF NOT EXISTS manager_remark TEXT
 `).catch(console.error);
 //attendance table
 pool.query(`
@@ -142,6 +148,9 @@ pool.query(`
     ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Pending',
     ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 `).catch(console.error);
+
+
+
 //function to calculate hours worked based on check-in and check-out times
 function calcHours(checkIn, checkOut) {
   if (!checkIn || !checkOut) return "0.00";
@@ -382,18 +391,24 @@ function mapUser(row) {
 module.exports = {
   //queries for fetching user info, attendance records, leave balances, leave requests, holidays, working hours, and notifications
   Query: {
-    me: async (_, __, { user }) => {
-      if (!user) throw new Error("Unauthorized");
-      const res = await pool.query(
-        `SELECT u.*, m.username AS manager_name
-         FROM users u
-         LEFT JOIN users m ON m.id = u.reports_to
-         WHERE u.id = $1`,
-        [user.id]
-      );
-      return mapUser(res.rows[0]);
-    },
-
+me: async (_, __, { user }) => {
+  if (!user) throw new Error("Unauthorized");
+  
+  const res = await pool.query(
+    `SELECT u.*, m.username AS manager_name,
+     -- Check if this user is a reporting manager for anyone else
+     (SELECT COUNT(*) FROM users WHERE reports_to = $1 OR direct_reporting2 = $1) > 0 AS is_manager
+     FROM users u
+     LEFT JOIN users m ON m.id = u.reports_to
+     WHERE u.id = $1`,
+    [user.id]
+  );
+  
+  const userData = mapUser(res.rows[0]);
+  // Attach the boolean flag to the user object
+  userData.isReportingManager = res.rows[0].is_manager; 
+  return userData;
+},
     attendance: async (_, __, { user }) => {
       if (!user) throw new Error("Unauthorized");
       const res = await pool.query(
@@ -466,7 +481,8 @@ module.exports = {
         days: row.days,
         reason: row.reason,
         status: row.status,
-          applicationDate: row.created_at ? row.created_at.toISOString().split("T")[0] : null,
+        managerRemark: row.manager_remark || null,
+        applicationDate: row.created_at ? row.created_at.toISOString().split("T")[0] : null,
       }));
     },
 
@@ -486,6 +502,7 @@ module.exports = {
         days: row.days,
         reason: row.reason,
         status: row.status,
+        managerRemark: row.manager_remark || null,
         applicationDate: row.created_at ? row.created_at.toISOString().split("T")[0] : null,
       }));
     },
@@ -506,9 +523,52 @@ module.exports = {
         days: row.days,
         reason: row.reason,
         status: row.status,
+        managerRemark: row.manager_remark || null,
         applicationDate: row.created_at ? row.created_at.toISOString().split("T")[0] : null,
       }));
     },
+
+
+
+
+pendingApprovals: async (_, __, { user }) => {
+  if (!user) throw new Error("Unauthorized");
+
+  let res;
+  if (user.role === 'admin') {
+    // Admins see leave requests of all non-admin employees
+    // (admin's own leaves go to their reporting manager, not other admins)
+    res = await pool.query(
+      `SELECT lr.*, u.username FROM leave_requests lr
+       JOIN users u ON u.id = lr.user_id
+       WHERE u.role <> 'admin'
+       ORDER BY lr.id DESC`
+    );
+  } else {
+    // Reporting managers see all requests from their direct reports (all statuses)
+    res = await pool.query(
+      `SELECT lr.*, u.username FROM leave_requests lr
+       JOIN users u ON u.id = lr.user_id
+       WHERE (u.reports_to = $1 OR u.direct_reporting2 = $1)
+       ORDER BY lr.id DESC`,
+      [user.id]
+    );
+  }
+
+  return res.rows.map((row) => ({
+    id: row.id,
+    userId: row.user_id,
+    username: row.username,
+    type: row.type,
+    startDate: row.start_date ? row.start_date.toISOString().split("T")[0] : null,
+    endDate: row.end_date ? row.end_date.toISOString().split("T")[0] : null,
+    days: row.days,
+    reason: row.reason,
+    status: row.status,
+    managerRemark: row.manager_remark || null,
+    applicationDate: row.created_at ? row.created_at.toISOString().split("T")[0] : null,
+  }));
+},
     // allUsers: async (_, __, { user }) => {
     //   if (!user || user.role !== "admin") throw new Error("Only admin");
     //   const res = await pool.query(`
@@ -972,70 +1032,131 @@ checkIn: async (_, __, { user }) => {
   }
 },
 
-    applyLeave: async (_, { type, startDate, endDate, days, reason }, { user }) => {
-      if (!user) throw new Error("Unauthorized");
-      await pool.query(
-        `INSERT INTO leave_requests (user_id, type, start_date, end_date, days, reason, status)
-         VALUES ($1, $2, $3, $4, $5, $6, 'Pending')`,
-        [user.id, type, startDate, endDate, days, reason]
-      );
-      return "Leave applied";
-    },
 
-    updateLeaveStatus: async (_, { leaveId, status }, { user }) => {
-      requireAdmin(user);
-      if (!["Approved", "Rejected"].includes(status)) throw new Error("Invalid status");
 
-      // Get existing leave
-      const existing = await pool.query(
-        "SELECT user_id, days, status, start_date, end_date FROM leave_requests WHERE id=$1",
-        [leaveId]
-      );
 
-      const leave = existing.rows[0];
-      if (!leave) throw new Error("Leave not found");
+//chaanged by neha to handle leave application and notification logic for both admin and employee roles in a dynamic way(1.1)
+applyLeave: async (_, { type, startDate, endDate, days, reason }, { user }) => {
+  if (!user) throw new Error("Unauthorized");
 
-      // Update leave status
-      await pool.query(
-        "UPDATE leave_requests SET status=$1 WHERE id=$2",
-        [status, leaveId]
-      );
+  // 1. Insert the leave request into the database
+  await pool.query(
+    `INSERT INTO leave_requests (user_id, type, start_date, end_date, days, reason, status)
+     VALUES ($1, $2, $3, $4, $5, $6, 'Pending')`,
+    [user.id, type, startDate, endDate, days, reason]
+  );
 
-      // ONLY update used leaves if:
-      // - new status = Approved
-      // - previous status was NOT Approved
-      if (status === "Approved" && leave.status !== "Approved") {
-        await pool.query(
-          "UPDATE leaves SET used = used + $1 WHERE user_id = $2",
-          [leave.days, leave.user_id]
-        );
-      }
+  // 2. Determine who to notify based on the user's role
+  const userRes = await pool.query(
+    "SELECT reports_to, direct_reporting2, role FROM users WHERE id = $1",
+    [user.id]
+  );
+  const currentUserData = userRes.rows[0];
+  const msg = `New leave request from ${user.username}.`;
 
-      const formatLeaveMessage = (startDate, endDate, statusText) => {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        const startDay = start.getDate();
-        const endDay = end.getDate();
-        const startMonth = start.toLocaleString("en-US", { month: "long" });
-        const endMonth = end.toLocaleString("en-US", { month: "long" });
-        const startYear = start.getFullYear();
-        const endYear = end.getFullYear();
+  if (currentUserData.role === 'admin') {
+    // ADMIN CASE: Only notify their reporting manager (primary + secondary)
+    if (currentUserData.reports_to) {
+      await pool.query("INSERT INTO notifications (user_id, message) VALUES ($1, $2)", [currentUserData.reports_to, msg]);
+    }
+    if (currentUserData.direct_reporting2) {
+      await pool.query("INSERT INTO notifications (user_id, message) VALUES ($1, $2)", [currentUserData.direct_reporting2, msg]);
+    }
+  } else {
+    // EMPLOYEE CASE: Notify reporting managers AND all admins
+    if (currentUserData.reports_to) {
+      await pool.query("INSERT INTO notifications (user_id, message) VALUES ($1, $2)", [currentUserData.reports_to, msg]);
+    }
+    if (currentUserData.direct_reporting2) {
+      await pool.query("INSERT INTO notifications (user_id, message) VALUES ($1, $2)", [currentUserData.direct_reporting2, msg]);
+    }
+    // Notify all admins (avoid duplicates if admin is also the reporting manager)
+    await pool.query(
+      `INSERT INTO notifications (user_id, message)
+       SELECT id, $1 FROM users
+       WHERE role = 'admin'
+         AND id <> COALESCE($2, -1)
+         AND id <> COALESCE($3, -1)`,
+      [msg, currentUserData.reports_to || null, currentUserData.direct_reporting2 || null]
+    );
+  }
 
-        if (startMonth === endMonth && startYear === endYear) {
-          return `Your leave request from ${startDay}-${endDay} ${startMonth} ${startYear} has been ${statusText.toLowerCase()}.`;
-        }
+  return "Leave applied successfully";
+},
 
-        return `Your leave request from ${startDay} ${startMonth} ${startYear} to ${endDay} ${endMonth} ${endYear} has been ${statusText.toLowerCase()}.`;
-      };
+//changed by neha to handle dynamic leave approval logic for both admin and reporting manager roles with proper authorization checks and notification formatting(1.1)
 
-      const msg = formatLeaveMessage(leave.start_date, leave.end_date, status);
-      await pool.query(
-        "INSERT INTO notifications (user_id, message) VALUES ($1, $2)",
-        [leave.user_id, msg]
-      );
+updateLeaveStatus: async (_, { leaveId, status, remark }, { user }) => {
+  // 1. Basic Authorization Check
+  if (!user) throw new Error("Unauthorized");
+  if (!["Approved", "Rejected"].includes(status)) throw new Error("Invalid status");
 
-      return `Leave ${status}`;
-    },
+  const normalizedRemark = remark ? String(remark).trim() : null;
+
+  // 2. Fetch the existing leave request and both reporting managers for the applicant
+  const existing = await pool.query(
+    `SELECT lr.user_id, lr.days, lr.status, lr.start_date, lr.end_date, 
+            u.reports_to, u.direct_reporting2 
+     FROM leave_requests lr
+     JOIN users u ON u.id = lr.user_id
+     WHERE lr.id = $1`,
+    [leaveId]
+  );
+
+  const leave = existing.rows[0];
+  if (!leave) throw new Error("Leave not found");
+
+  // 3. Permission Logic: Admin OR any of the designated Reporting Managers can approve
+  const isAdmin = user.role === "admin";
+  const isReportingManager = 
+    String(leave.reports_to) === String(user.id) || 
+    String(leave.direct_reporting2) === String(user.id);
+
+  if (!isAdmin && !isReportingManager) {
+    throw new Error("Access denied: Only admins or assigned reporting managers can update leave status");
+  }
+
+  // 4. Update the leave status and manager remark in the database
+  await pool.query(
+    "UPDATE leave_requests SET status = $1, manager_remark = $2 WHERE id = $3",
+    [status, normalizedRemark, leaveId]
+  );
+
+  // 5. Update leave balance if the request is newly approved
+  if (status === "Approved" && leave.status !== "Approved") {
+    await pool.query(
+      "UPDATE leaves SET used = used + $1 WHERE user_id = $2",
+      [leave.days, leave.user_id]
+    );
+  }
+
+  // 6. Notification formatting logic
+  const formatLeaveMessage = (startDate, endDate, statusText) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const startDay = start.getDate();
+    const endDay = end.getDate();
+    const startMonth = start.toLocaleString("en-US", { month: "long" });
+    const endMonth = end.toLocaleString("en-US", { month: "long" });
+    const startYear = start.getFullYear();
+    const endYear = end.getFullYear();
+
+    if (startMonth === endMonth && startYear === endYear) {
+      return `Your leave request from ${startDay}-${endDay} ${startMonth} ${startYear} has been ${statusText.toLowerCase()}.`;
+    }
+    return `Your leave request from ${startDay} ${startMonth} ${startYear} to ${endDay} ${endMonth} ${endYear} has been ${statusText.toLowerCase()}.`;
+  };
+
+  // 7. Send notification back to the employee
+  const baseMsg = formatLeaveMessage(leave.start_date, leave.end_date, status);
+  const msg = normalizedRemark ? `${baseMsg} Remark: ${normalizedRemark}` : baseMsg;
+  await pool.query(
+    "INSERT INTO notifications (user_id, message) VALUES ($1, $2)",
+    [leave.user_id, msg]
+  );
+
+  return `Leave ${status}`;
+},
 
     setWorkingHours: async (_, args, { user }) => {
       requireAdmin(user);
