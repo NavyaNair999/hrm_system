@@ -482,17 +482,7 @@ export default function UserList({ setTab, setProfileUserId }) {
                     </td>
                     <td>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                        {/* View Profile */}
-                        {/* <button
-                          onClick={() => setProfileUser(u)}
-                          style={{
-                            padding: "4px 10px", borderRadius: 6, border: "1px solid #e5c6c6",
-                            background: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 500,
-                            color: "#444",
-                          }}
-                        >
-                          View
-                        </button> */}
+                        
                         <button
                         onClick={() => { setProfileUserId(u.id); setTab("employeeProfile"); }}
                         style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #e5c6c6",

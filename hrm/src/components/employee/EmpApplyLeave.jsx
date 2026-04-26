@@ -1,9 +1,6 @@
-// components/employee/EmpApplyLeave.jsx
 import { useState } from "react";
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
-
-// ── GraphQL ──────────────────────────────────────────────────────────────────
 
 const LEAVE_BALANCE = gql`
   query LeaveBalance {
