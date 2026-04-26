@@ -72,11 +72,30 @@ const RESET_PASSWORD = gql`
 `;
 
 const UPDATE_EMPLOYEE_DETAILS = gql`
-  mutation UpdateEmployeeDetails($userId: ID!, $dateOfBirth: String, $scheduleType: String, $biometricId: String) {
-    updateEmployeeDetails(userId: $userId, dateOfBirth: $dateOfBirth, scheduleType: $scheduleType, biometricId: $biometricId)
+  mutation UpdateEmployeeDetails(
+    $userId: ID!
+    $dateOfBirth: String
+    $scheduleType: String
+    $biometricId: String
+    $department: String
+  ) {
+    updateEmployeeDetails(
+      userId: $userId
+      dateOfBirth: $dateOfBirth
+      scheduleType: $scheduleType
+      biometricId: $biometricId
+      department: $department
+    )
   }
 `;
-
+const GET_DEPARTMENTS = gql`
+  query GetDepartmentsForEdit {
+    departments {
+      id
+      name
+    }
+  }
+`;
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function initials(name) {
@@ -187,11 +206,21 @@ const labelStyle = {
 function GeneralInfoTab({ employee, isAdmin, onSave }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
-    dateOfBirth:  employee.dateOfBirth  || "",
+    dateOfBirth: employee.dateOfBirth || "",
     scheduleType: employee.scheduleType || "",
-    biometricId:  employee.biometricId  || "",
+    biometricId: employee.biometricId || "",
+    department: employee.department || "",
   });
-  const [updateDetails, { loading }] = useMutation(UPDATE_EMPLOYEE_DETAILS);
+
+
+  const { data: deptData } = useQuery(GET_DEPARTMENTS, { skip: !isAdmin });
+  const [updateDetails, { loading }] = useMutation(UPDATE_EMPLOYEE_DETAILS, {
+    refetchQueries: [
+      { query: GET_ALL_USERS },
+      { query: GET_EMPLOYEE, variables: { id: employee.id } },
+    ],
+    awaitRefetchQueries: true,
+  });
 
   async function handleSave() {
     try {
@@ -203,14 +232,16 @@ function GeneralInfoTab({ employee, isAdmin, onSave }) {
     }
   }
 
+
+
+  const departments = deptData?.departments || [];
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--text-primary,#111)" }}>
           General Information
         </h3>
-
-        {/* Edit button only for admin */}
         {isAdmin && !editing && (
           <button
             onClick={() => setEditing(true)}
@@ -225,7 +256,15 @@ function GeneralInfoTab({ employee, isAdmin, onSave }) {
         {isAdmin && editing && (
           <div style={{ display: "flex", gap: 8 }}>
             <button
-              onClick={() => setEditing(false)}
+              onClick={() => {
+                setEditing(false);
+                setForm({
+                  dateOfBirth: employee.dateOfBirth || "",
+                  scheduleType: employee.scheduleType || "",
+                  biometricId: employee.biometricId || "",
+                  department: employee.department || "",
+                });
+              }}
               style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: 12 }}
             >
               Cancel
@@ -242,19 +281,38 @@ function GeneralInfoTab({ employee, isAdmin, onSave }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 32px" }}>
-        {/* Left */}
+        {/* Left column */}
         <div>
           <FieldRow label="Employee Number" value={employee.employeeNumber} highlight />
-          <FieldRow label="Full Name"        value={employee.username} />
-          <FieldRow label="Designation"      value={employee.designation} />
-          <FieldRow label="Department"       value={employee.department} />
+          <FieldRow label="Full Name" value={employee.username} />
+          <FieldRow label="Designation" value={employee.designation} />
+
+          {/* Department — editable */}
+          {isAdmin && editing ? (
+            <div style={{ padding: "10px 0", borderBottom: "1px solid var(--border-color,#f0f0f0)" }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Department
+              </label>
+              <select
+                style={inputStyle}
+                value={form.department}
+                onChange={(e) => setForm({ ...form, department: e.target.value })}
+              >
+                <option value="">Select…</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.name}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <FieldRow label="Department" value={employee.department} />
+          )}
         </div>
 
-        {/* Right */}
+        {/* Right column — unchanged */}
         <div>
           <FieldRow label="Date of Joining (DOJ)" value={formatDate(employee.joiningDate)} />
 
-          {/* DOB */}
           {isAdmin && editing ? (
             <div style={{ padding: "10px 0", borderBottom: "1px solid var(--border-color,#f0f0f0)" }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px" }}>Date of Birth</label>
@@ -265,7 +323,6 @@ function GeneralInfoTab({ employee, isAdmin, onSave }) {
             <FieldRow label="Date of Birth (DOB)" value={formatDate(employee.dateOfBirth)} />
           )}
 
-          {/* Schedule Type */}
           {isAdmin && editing ? (
             <div style={{ padding: "10px 0", borderBottom: "1px solid var(--border-color,#f0f0f0)" }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px" }}>Schedule Type</label>
@@ -282,7 +339,6 @@ function GeneralInfoTab({ employee, isAdmin, onSave }) {
             <FieldRow label="Schedule Type" value={employee.scheduleType} />
           )}
 
-          {/* Biometric ID — admin only (sensitive) */}
           {isAdmin ? (
             editing ? (
               <div style={{ padding: "10px 0", borderBottom: "1px solid var(--border-color,#f0f0f0)" }}>
@@ -294,7 +350,7 @@ function GeneralInfoTab({ employee, isAdmin, onSave }) {
             ) : (
               <FieldRow label="Biometric ID" value={employee.biometricId} />
             )
-          ) : null /* employees don't see biometric ID */ }
+          ) : null}
         </div>
       </div>
     </div>
@@ -335,18 +391,18 @@ function ReportingCard({ label, name, role, color, highlight }) {
 }
 
 function PositionTab({ employee, allUsers, isAdmin, onSave, refetch }) {
-  const [showChangePosition,  setShowChangePosition]  = useState(false);
+  const [showChangePosition, setShowChangePosition] = useState(false);
   const [showChangeReporting, setShowChangeReporting] = useState(false);
   const [posForm, setPosForm] = useState({ newDesignation: "", effectiveDate: "", reason: "" });
   const [repForm, setRepForm] = useState({
-    reportsToId:        employee.reportsToId || "",
+    reportsToId: employee.reportsToId || "",
     directReporting2Id: "",
   });
 
-  const [changePosition,  { loading: cpLoading }] = useMutation(CHANGE_POSITION);
+  const [changePosition, { loading: cpLoading }] = useMutation(CHANGE_POSITION);
   const [updateReporting, { loading: urLoading }] = useMutation(UPDATE_REPORTING);
 
-  const history  = employee.positionHistory || [];
+  const history = employee.positionHistory || [];
   const managers = (allUsers || []).filter((u) => u.id !== employee.id);
 
   async function handleChangePosition() {
@@ -368,8 +424,8 @@ function PositionTab({ employee, allUsers, isAdmin, onSave, refetch }) {
     try {
       await updateReporting({
         variables: {
-          userId:             employee.id,
-          reportsToId:        repForm.reportsToId        || null,
+          userId: employee.id,
+          reportsToId: repForm.reportsToId || null,
           directReporting2Id: repForm.directReporting2Id || null,
         },
       });
@@ -385,9 +441,9 @@ function PositionTab({ employee, allUsers, isAdmin, onSave, refetch }) {
   const timeline = [
     {
       id: "origin",
-      designation:   employee.designation || "Initial Role",
+      designation: employee.designation || "Initial Role",
       effectiveDate: employee.joiningDate,
-      reason:        "Date of Joining",
+      reason: "Date of Joining",
     },
     ...history,
   ].sort((a, b) => new Date(a.effectiveDate) - new Date(b.effectiveDate));
@@ -472,7 +528,7 @@ function PositionTab({ employee, allUsers, isAdmin, onSave, refetch }) {
           )}
         </div>
 
-        <ReportingCard label="Reporting Manager"  name={employee.reportsTo}       role="Primary Supervisor"            color="#2563eb" />
+        <ReportingCard label="Reporting Manager" name={employee.reportsTo} role="Primary Supervisor" color="#2563eb" />
         <div style={{ height: 14, borderLeft: "2px dashed #ddd", marginLeft: 24 }} />
         <ReportingCard label="Direct Reporting 2" name={employee.directReporting2} role="Secondary / Functional Manager" color="#7c3aed" />
         <div style={{ height: 14, borderLeft: "2px dashed #ddd", marginLeft: 24 }} />
@@ -546,7 +602,7 @@ function PositionTab({ employee, allUsers, isAdmin, onSave, refetch }) {
 
 function GearMenu({ employee, onToast, onClose }) {
   const [showResetPwd, setShowResetPwd] = useState(false);
-  const [newPassword,  setNewPassword]  = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [resetPwd, { loading }] = useMutation(RESET_PASSWORD);
 
   async function handleReset() {
@@ -563,9 +619,9 @@ function GearMenu({ employee, onToast, onClose }) {
   }
 
   const menuItems = [
-    { label: "📷  Change Photo",      action: () => { onToast("Photo upload — coming soon"); onClose(); } },
-    { label: "🔑  Reset Password",    action: () => setShowResetPwd(true) },
-    { label: "🛡️  Edit Permissions",  action: () => { onToast("Permissions editor — coming soon"); onClose(); } },
+    { label: "📷  Change Photo", action: () => { onToast("Photo upload — coming soon"); onClose(); } },
+    { label: "🔑  Reset Password", action: () => setShowResetPwd(true) },
+    { label: "🛡️  Edit Permissions", action: () => { onToast("Permissions editor — coming soon"); onClose(); } },
   ];
 
   return (
@@ -587,7 +643,7 @@ function GearMenu({ employee, onToast, onClose }) {
               borderBottom: "1px solid #f5f5f5",
             }}
             onMouseOver={(e) => (e.currentTarget.style.background = "#fdecea")}
-            onMouseOut={(e)  => (e.currentTarget.style.background = "none")}
+            onMouseOut={(e) => (e.currentTarget.style.background = "none")}
           >
             {item.label}
           </button>
@@ -620,14 +676,14 @@ function GearMenu({ employee, onToast, onClose }) {
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: "general",  label: "General Information"   },
-  { id: "position", label: "Position & Reporting"  },
+  { id: "general", label: "General Information" },
+  { id: "position", label: "Position & Reporting" },
 ];
 
 export default function EmployeeProfile({ userId, isAdmin, onBack }) {
   const [activeTab, setActiveTab] = useState("general");
-  const [gearOpen,  setGearOpen]  = useState(false);
-  const [toast,     setToast]     = useState("");
+  const [gearOpen, setGearOpen] = useState(false);
+  const [toast, setToast] = useState("");
 
   const { data, loading, error, refetch } = useQuery(GET_EMPLOYEE, {
     variables: { id: userId },
@@ -645,9 +701,9 @@ export default function EmployeeProfile({ userId, isAdmin, onBack }) {
     setTimeout(() => setToast(""), 3500);
   }
 
-  if (!userId)  return <div style={{ padding: 40, color: "#aaa" }}>No employee selected.</div>;
-  if (loading)  return <div style={{ padding: 40, color: "#aaa" }}>Loading profile…</div>;
-  if (error)    return <div style={{ padding: 40, color: "#c0392b" }}>Error: {error.message}</div>;
+  if (!userId) return <div style={{ padding: 40, color: "#aaa" }}>No employee selected.</div>;
+  if (loading) return <div style={{ padding: 40, color: "#aaa" }}>Loading profile…</div>;
+  if (error) return <div style={{ padding: 40, color: "#c0392b" }}>Error: {error.message}</div>;
 
   const employee = data?.employeeById;
   if (!employee) return <div style={{ padding: 40, color: "#aaa" }}>Employee not found.</div>;
@@ -709,7 +765,7 @@ export default function EmployeeProfile({ userId, isAdmin, onBack }) {
               display: "inline-block", padding: "2px 10px", borderRadius: 10,
               fontSize: 11, fontWeight: 700,
               background: employee.isActive ? "#e8f8ef" : "#fdf4f4",
-              color:      employee.isActive ? "#1a7a4a" : "#c0392b",
+              color: employee.isActive ? "#1a7a4a" : "#c0392b",
               border: `1px solid ${employee.isActive ? "#abebc6" : "#f5c6cb"}`,
             }}>
               {employee.isActive ? "Active" : "Inactive"}
@@ -767,7 +823,7 @@ export default function EmployeeProfile({ userId, isAdmin, onBack }) {
         borderBottom: "2px solid var(--border-color,#f0f0f0)",
         background: "var(--bg-primary,#fff)",
         padding: "0 28px",
-        borderLeft:  "1px solid var(--border-color,#f0f0f0)",
+        borderLeft: "1px solid var(--border-color,#f0f0f0)",
         borderRight: "1px solid var(--border-color,#f0f0f0)",
       }}>
         {TABS.map((t) => (
@@ -778,7 +834,7 @@ export default function EmployeeProfile({ userId, isAdmin, onBack }) {
               padding: "14px 20px", border: "none", background: "none", cursor: "pointer",
               fontSize: 13,
               fontWeight: activeTab === t.id ? 700 : 500,
-              color:      activeTab === t.id ? "#c0392b" : "#888",
+              color: activeTab === t.id ? "#c0392b" : "#888",
               borderBottom: activeTab === t.id ? "2px solid #c0392b" : "2px solid transparent",
               marginBottom: -2,
               transition: "color 0.15s",
