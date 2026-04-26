@@ -222,6 +222,13 @@ function CorrectionModal({ record, onClose, onSubmit, loading }) {
   const [checkOut, setCheckOut] = useState(() => toTimeInputValue(record?.checkOut));
   const [reason, setReason] = useState("");
 
+  const handleSubmit = async () => {
+    const submitted = await onSubmit({ checkIn, checkOut, reason });
+    if (submitted !== false) {
+      onClose();
+    }
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" style={{ maxWidth: 520 }} onClick={(event) => event.stopPropagation()}>
@@ -259,7 +266,7 @@ function CorrectionModal({ record, onClose, onSubmit, loading }) {
             className="btn-primary"
             type="button"
             disabled={loading}
-            onClick={() => onSubmit({ checkIn, checkOut, reason })}
+            onClick={handleSubmit}
           >
             {loading ? "Submitting..." : "Submit Request"}
           </button>
@@ -467,7 +474,11 @@ export default function EmpAttendance({ currentUser }) {
 
   const [checkInMut, { loading: checkInLoading }] = useMutation(CHECK_IN);
   const [checkOutMut, { loading: checkOutLoading }] = useMutation(CHECK_OUT);
-  const [requestCorrection, { loading: requestLoading }] = useMutation(REQUEST_ATTENDANCE_CORRECTION);
+  const [requestCorrection, { loading: requestLoading }] = useMutation(REQUEST_ATTENDANCE_CORRECTION, {
+    onCompleted: () => {
+      setSelectedRecord(null);
+    },
+  });
 
   const teamMembers = teamData?.teamMembers || [];
   const filteredTeamMembers = useMemo(() => {
@@ -542,7 +553,7 @@ export default function EmpAttendance({ currentUser }) {
   async function submitCorrection({ checkIn, checkOut, reason }) {
     if (!reason.trim()) {
       showToast("Please add a reason for the adjustment request.");
-      return;
+      return false;
     }
 
     const toIso = (date, time) => (time ? `${date}T${time}:00+05:30` : null);
@@ -558,8 +569,10 @@ export default function EmpAttendance({ currentUser }) {
       });
       setSelectedRecord(null);
       showToast("Attendance adjustment request submitted.");
+      return true;
     } catch (error) {
       showToast(error.message || "Unable to submit the request.");
+      return false;
     }
   }
 

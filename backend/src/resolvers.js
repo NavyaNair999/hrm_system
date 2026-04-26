@@ -3,6 +3,15 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
+function formatUniqueConstraintError(error, entityName) {
+  if (!error || error.code !== "23505") return null;
+  const detail = String(error.detail || "").toLowerCase();
+  if (detail.includes("normalized_name") || detail.includes("duplicate key")) {
+    return `${entityName} already exists`;
+  }
+  return null;
+}
+
 //leave request table
 pool.query(`
   CREATE TABLE IF NOT EXISTS leave_requests (
@@ -1405,11 +1414,17 @@ createDepartment: async (_, { name }, { user }) => {
   requireAdmin(user);
   const cleanName = sanitizeName(name, "Department");
   const normalizedName = normalizeName(cleanName);
-  await pool.query(
-    `INSERT INTO departments (name, normalized_name)
-     VALUES ($1, $2)`,
-    [cleanName, normalizedName]
-  );
+  try {
+    await pool.query(
+      `INSERT INTO departments (name, normalized_name)
+       VALUES ($1, $2)`,
+      [cleanName, normalizedName]
+    );
+  } catch (error) {
+    const friendlyMessage = formatUniqueConstraintError(error, "Department");
+    if (friendlyMessage) throw new Error(friendlyMessage);
+    throw error;
+  }
   return "Department created";
 },
 
@@ -1417,13 +1432,19 @@ updateDepartment: async (_, { id, name }, { user }) => {
   requireAdmin(user);
   const cleanName = sanitizeName(name, "Department");
   const normalizedName = normalizeName(cleanName);
-  const result = await pool.query(
-    `UPDATE departments
-     SET name = $1, normalized_name = $2, updated_at = CURRENT_TIMESTAMP
-     WHERE id = $3`,
-    [cleanName, normalizedName, id]
-  );
-  if (!result.rowCount) throw new Error("Department not found");
+  try {
+    const result = await pool.query(
+      `UPDATE departments
+       SET name = $1, normalized_name = $2, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3`,
+      [cleanName, normalizedName, id]
+    );
+    if (!result.rowCount) throw new Error("Department not found");
+  } catch (error) {
+    const friendlyMessage = formatUniqueConstraintError(error, "Department");
+    if (friendlyMessage) throw new Error(friendlyMessage);
+    throw error;
+  }
   return "Department updated";
 },
 
@@ -1451,11 +1472,17 @@ createDesignation: async (_, { name }, { user }) => {
   requireAdmin(user);
   const cleanName = sanitizeName(name, "Designation");
   const normalizedName = normalizeName(cleanName);
-  await pool.query(
-    `INSERT INTO designations (name, normalized_name)
-     VALUES ($1, $2)`,
-    [cleanName, normalizedName]
-  );
+  try {
+    await pool.query(
+      `INSERT INTO designations (name, normalized_name)
+       VALUES ($1, $2)`,
+      [cleanName, normalizedName]
+    );
+  } catch (error) {
+    const friendlyMessage = formatUniqueConstraintError(error, "Designation");
+    if (friendlyMessage) throw new Error(friendlyMessage);
+    throw error;
+  }
   return "Designation created";
 },
 
@@ -1463,13 +1490,19 @@ updateDesignation: async (_, { id, name }, { user }) => {
   requireAdmin(user);
   const cleanName = sanitizeName(name, "Designation");
   const normalizedName = normalizeName(cleanName);
-  const result = await pool.query(
-    `UPDATE designations
-     SET name = $1, normalized_name = $2, updated_at = CURRENT_TIMESTAMP
-     WHERE id = $3`,
-    [cleanName, normalizedName, id]
-  );
-  if (!result.rowCount) throw new Error("Designation not found");
+  try {
+    const result = await pool.query(
+      `UPDATE designations
+       SET name = $1, normalized_name = $2, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3`,
+      [cleanName, normalizedName, id]
+    );
+    if (!result.rowCount) throw new Error("Designation not found");
+  } catch (error) {
+    const friendlyMessage = formatUniqueConstraintError(error, "Designation");
+    if (friendlyMessage) throw new Error(friendlyMessage);
+    throw error;
+  }
   return "Designation updated";
 },
 
@@ -1496,58 +1529,70 @@ deleteDesignation: async (_, { id }, { user }) => {
 createWorkSchedule: async (_, args, { user }) => {
   requireAdmin(user);
   const schedule = sanitizeScheduleInput(args);
-  await pool.query(
-    `INSERT INTO work_schedules (
-       name, normalized_name, schedule_type, working_days,
-       max_check_in_time, total_daily_hours,
-       fixed_check_in_time, buffer_minutes, fixed_check_out_time
-     )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-    [
-      schedule.name,
-      schedule.normalizedName,
-      schedule.scheduleType,
-      schedule.workingDays,
-      schedule.maxCheckInTime,
-      schedule.totalDailyHours,
-      schedule.fixedCheckInTime,
-      schedule.bufferMinutes,
-      schedule.fixedCheckOutTime,
-    ]
-  );
+  try {
+    await pool.query(
+      `INSERT INTO work_schedules (
+         name, normalized_name, schedule_type, working_days,
+         max_check_in_time, total_daily_hours,
+         fixed_check_in_time, buffer_minutes, fixed_check_out_time
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        schedule.name,
+        schedule.normalizedName,
+        schedule.scheduleType,
+        schedule.workingDays,
+        schedule.maxCheckInTime,
+        schedule.totalDailyHours,
+        schedule.fixedCheckInTime,
+        schedule.bufferMinutes,
+        schedule.fixedCheckOutTime,
+      ]
+    );
+  } catch (error) {
+    const friendlyMessage = formatUniqueConstraintError(error, "Schedule");
+    if (friendlyMessage) throw new Error(friendlyMessage);
+    throw error;
+  }
   return "Schedule created";
 },
 
 updateWorkSchedule: async (_, { id, ...args }, { user }) => {
   requireAdmin(user);
   const schedule = sanitizeScheduleInput(args);
-  const result = await pool.query(
-    `UPDATE work_schedules
-     SET name = $1,
-         normalized_name = $2,
-         schedule_type = $3,
-         working_days = $4,
-         max_check_in_time = $5,
-         total_daily_hours = $6,
-         fixed_check_in_time = $7,
-         buffer_minutes = $8,
-         fixed_check_out_time = $9,
-         updated_at = CURRENT_TIMESTAMP
-     WHERE id = $10`,
-    [
-      schedule.name,
-      schedule.normalizedName,
-      schedule.scheduleType,
-      schedule.workingDays,
-      schedule.maxCheckInTime,
-      schedule.totalDailyHours,
-      schedule.fixedCheckInTime,
-      schedule.bufferMinutes,
-      schedule.fixedCheckOutTime,
-      id,
-    ]
-  );
-  if (!result.rowCount) throw new Error("Schedule not found");
+  try {
+    const result = await pool.query(
+      `UPDATE work_schedules
+       SET name = $1,
+           normalized_name = $2,
+           schedule_type = $3,
+           working_days = $4,
+           max_check_in_time = $5,
+           total_daily_hours = $6,
+           fixed_check_in_time = $7,
+           buffer_minutes = $8,
+           fixed_check_out_time = $9,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $10`,
+      [
+        schedule.name,
+        schedule.normalizedName,
+        schedule.scheduleType,
+        schedule.workingDays,
+        schedule.maxCheckInTime,
+        schedule.totalDailyHours,
+        schedule.fixedCheckInTime,
+        schedule.bufferMinutes,
+        schedule.fixedCheckOutTime,
+        id,
+      ]
+    );
+    if (!result.rowCount) throw new Error("Schedule not found");
+  } catch (error) {
+    const friendlyMessage = formatUniqueConstraintError(error, "Schedule");
+    if (friendlyMessage) throw new Error(friendlyMessage);
+    throw error;
+  }
   return "Schedule updated";
 },
 
