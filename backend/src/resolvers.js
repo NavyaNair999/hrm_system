@@ -890,7 +890,10 @@ teamMembers: async (_, __, { user }) => {
       if (user.is_active === false) throw new Error("Your account has been deactivated. Please contact your administrator.");
       const valid = await bcrypt.compare(password, user.password);
       if (!valid) throw new Error("Invalid password");
-      return jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET);
+      return jwt.sign(
+        { id: user.id, role: user.role, username: user.username },
+        process.env.JWT_SECRET
+      );
 
     },
 
@@ -955,7 +958,11 @@ checkIn: async (_, __, { user }) => {
   }
 
   const userId = user.id;
-  const username = user.username;
+  let username = user.username;
+  if (!username) {
+    const nameRes = await pool.query("SELECT username FROM users WHERE id = $1", [userId]);
+    username = nameRes.rows[0]?.username || "Unknown user";
+  }
 
   try {
     // 2. Perform the insertion
@@ -1048,29 +1055,27 @@ applyLeave: async (_, { type, startDate, endDate, days, reason }, { user }) => {
 
   // 2. Determine who to notify based on the user's role
   const userRes = await pool.query(
-    "SELECT reports_to, direct_reporting2, role FROM users WHERE id = $1",
+    "SELECT reports_to, direct_reporting2, role, username FROM users WHERE id = $1",
     [user.id]
   );
   const currentUserData = userRes.rows[0];
-  const msg = `New leave request from ${user.username}.`;
+  const username = currentUserData?.username || user.username || "Unknown user";
+  const msg = `New leave request from ${username}.`;
+  const managerIds = new Set();
+  if (currentUserData.reports_to) managerIds.add(currentUserData.reports_to);
+  if (currentUserData.direct_reporting2) managerIds.add(currentUserData.direct_reporting2);
 
   if (currentUserData.role === 'admin') {
-    // ADMIN CASE: Only notify their reporting manager (primary + secondary)
-    if (currentUserData.reports_to) {
-      await pool.query("INSERT INTO notifications (user_id, message) VALUES ($1, $2)", [currentUserData.reports_to, msg]);
-    }
-    if (currentUserData.direct_reporting2) {
-      await pool.query("INSERT INTO notifications (user_id, message) VALUES ($1, $2)", [currentUserData.direct_reporting2, msg]);
+    // ADMIN CASE: Only notify their reporting manager(s)
+    for (const managerId of managerIds) {
+      await pool.query("INSERT INTO notifications (user_id, message) VALUES ($1, $2)", [managerId, msg]);
     }
   } else {
     // EMPLOYEE CASE: Notify reporting managers AND all admins
-    if (currentUserData.reports_to) {
-      await pool.query("INSERT INTO notifications (user_id, message) VALUES ($1, $2)", [currentUserData.reports_to, msg]);
+    for (const managerId of managerIds) {
+      await pool.query("INSERT INTO notifications (user_id, message) VALUES ($1, $2)", [managerId, msg]);
     }
-    if (currentUserData.direct_reporting2) {
-      await pool.query("INSERT INTO notifications (user_id, message) VALUES ($1, $2)", [currentUserData.direct_reporting2, msg]);
-    }
-    // Notify all admins (avoid duplicates if admin is also the reporting manager)
+    // Notify all admins (avoid duplicates if an admin is already a reporting manager)
     await pool.query(
       `INSERT INTO notifications (user_id, message)
        SELECT id, $1 FROM users
