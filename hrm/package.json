@@ -12,6 +12,7 @@
   "dependencies": {
     "@apollo/client": "^4.1.7",
     "@supabase/supabase-js": "^2.104.1",
+    "geolib": "^3.3.14",
     "graphql": "^16.13.2",
     "graphql-tag": "^2.12.6",
     "react": "^19.2.4",

@@ -509,15 +509,26 @@ export default function EmpAttendance({ currentUser }) {
     setTimeout(() => setToast(""), 3000);
   }
 
+
+// to handle the lat and lang for check-in by omkar on 4/27/26
   async function handleCheckIn() {
-    try {
-      await checkInMut();
-      await refetchSelfAttendance();
-      showToast("Checked in successfully.");
-    } catch (error) {
-      showToast(error.message || "Unable to check in.");
-    }
+  try {
+    const position = await new Promise((resolve, reject) =>
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+      })
+    );
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+
+    await checkInMut({ variables: { lat, lng } });
+    await refetchSelfAttendance();
+    showToast("Checked in successfully.");
+  } catch (error) {
+    showToast(error.message || "Unable to check in.");
   }
+}
 
   async function handleCheckOut() {
     try {

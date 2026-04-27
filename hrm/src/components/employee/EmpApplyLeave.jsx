@@ -93,7 +93,7 @@ function statusColor(status) {
 function LeaveBalanceCards({ balance, leaves }) {
   if (!balance) return null;
 
-  const earned = Math.max(0, (balance.paid ?? 0) - (balance.used ?? 0));
+  const earned = (balance.paid ?? 0) - (balance.used ?? 0);
   const sick = balance.casual ?? 0;
   const casual = balance.wfh ?? 0;
 
@@ -110,9 +110,9 @@ function LeaveBalanceCards({ balance, leaves }) {
       total: balance.paid ?? 0,
       used: balance.used ?? 0,
       remaining: earned,
-      color: "#3b82f6",
-      lightBg: "#eff6ff",
-      icon: "🏖️",
+      color: earned < 0 ? "#dc2626" : earned === 0 ? "#f97316" : "#3b82f6",
+      lightBg: earned < 0 ? "#fff1f2" : earned === 0 ? "#fff7ed" : "#eff6ff",
+      icon: earned < 0 ? "⚠️" : "🏖️",
     },
     {
       label: "Sick Leave", abbr: "SL",
@@ -142,7 +142,7 @@ function LeaveBalanceCards({ balance, leaves }) {
       marginBottom: 32,
     }}>
       {cards.map((c) => {
-        const pct = c.total > 0 ? Math.min(100, (c.remaining / c.total) * 100) : 0;
+        const pct = c.total > 0 ? Math.min(100, (Math.max(0, c.remaining) / c.total) * 100) : 0;
         return (
           <div key={c.label} style={{
             background: "var(--bg-primary, #fff)",
@@ -175,13 +175,21 @@ function LeaveBalanceCards({ balance, leaves }) {
             </div>
 
             {/* Big remaining count */}
+
+            // handle negative and zero remaining cases by omkar on 26/4/26
             <div style={{
-              fontSize: 40, fontWeight: 800, color: c.color,
-              lineHeight: 1, marginBottom: 2,
-            }}>
-              {c.remaining}
+                  fontSize: 40, fontWeight: 800, color: c.color,
+                  lineHeight: 1, marginBottom: 2,
+                }}>
+                {c.remaining < 0 ? `-${Math.abs(c.remaining)}` : c.remaining}
+              </div>
+              <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 14 }}>
+                {c.remaining < 0
+                ? `exceeded by ${Math.abs(c.remaining)}`
+                : c.remaining === 0
+                ? "no days left"
+                : "days remaining"}
             </div>
-            <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 14 }}>days remaining</div>
 
             {/* Progress bar */}
             <div style={{ height: 6, background: "#f3f4f6", borderRadius: 99, overflow: "hidden", marginBottom: 14 }}>

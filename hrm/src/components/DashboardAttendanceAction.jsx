@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
 import "./DashboardAttendanceAction.css";
+import { getDistance } from "geolib";
+import ToastPopup from "../../src/components/ui/ToastPopup";
 
 const ATTENDANCE_QUERY = gql`
   query DashboardAttendance {
@@ -122,6 +124,8 @@ export default function DashboardAttendanceAction({ title = "Attendance Action" 
   const isCheckedIn = !!(todayRec?.checkIn && !todayRec?.checkOut);
   const isDone = !!todayRec?.checkOut;
   const actionLoading = checkInLoading || checkOutLoading;
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!isCheckedIn) return undefined;
@@ -133,28 +137,98 @@ export default function DashboardAttendanceAction({ title = "Attendance Action" 
     return () => window.clearInterval(timer);
   }, [isCheckedIn]);
 
+  useEffect(() => {
+  if (success || error) {
+    const timer = setTimeout(() => {
+      setSuccess("");
+      setError("");
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }
+}, [success, error]);
+
   const hoursWorkedLabel = formatHoursLabel(todayRec, nowTick);
   const buttonLabel = isDone ? "Done for Today" : isCheckedIn ? "Web Check-Out" : "Web Check-In";
   const statusLabel = isDone ? "Completed" : isCheckedIn ? "Working" : "Ready to start";
 
-  async function handleAttendanceAction() {
-    if (isDone || actionLoading) return;
 
-    setActionError("");
-
-    try {
-      if (isCheckedIn) {
-        await checkOutMut();
-      } else {
-        await checkInMut();
-      }
-    } catch (error) {
-      setActionError(error.message || "Unable to update attendance right now.");
-    }
+// geotagging check-in logic by omkar on 4/27/26
+async function handleGeoCheckIn() {
+  const geoSupported = "geolocation" in navigator;
+  if (!geoSupported) {
+    setError("Geolocation is not supported by your browser.");
+    return;
   }
 
+  const workLocation = { lat: 19.042135336140667, lng: 73.0227908031799 };
+  const maxDistanceMeters = 100;
+
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude, accuracy } = position.coords;
+
+          // if (accuracy > 100) {
+          //   setError("Location accuracy is too low. Try again.");
+          //   return reject(new Error("Low accuracy"));
+          // }
+
+          const distance = getDistance(
+            workLocation,
+            { lat: latitude, lng: longitude }
+          );
+
+          if (distance > maxDistanceMeters) {
+            setError("You are not within the allowed radius.");
+            return reject(new Error("Outside radius"));
+          }
+
+          await checkInMut({
+            variables: {
+              lat: latitude,
+              lng: longitude,
+            },
+          });
+
+          setSuccess("Checked in successfully ");
+          resolve();
+        } catch (err) {
+          setError("Check-in failed");
+          reject(err);
+        }
+      },
+      () => {
+        setError("Unable to retrieve your location.");
+        reject(new Error("Location error"));
+      }
+    );
+  });
+}
+async function handleAttendanceAction() {
+  if (isDone || actionLoading) return;
+
+  setError("");
+  setSuccess("");
+
+  try {
+    if (isCheckedIn) {
+      await checkOutMut();
+      setSuccess("Checked out successfully ");
+    } else {
+      await handleGeoCheckIn();
+    }
+  } catch (error) {
+    setError(error.message || "Something went wrong");
+  }
+}
   return (
     <section className="dash-attendance">
+      <ToastPopup
+      message={success || error}
+      type={success ? "success" : "error"}
+    />
       <div className="dash-attendance__header">
         <div>
           <span className="dash-attendance__eyebrow">{title}</span>
@@ -197,7 +271,7 @@ export default function DashboardAttendanceAction({ title = "Attendance Action" 
         </button>
 
         {loading ? <span className="dash-attendance__helper">Refreshing attendance...</span> : null}
-        {actionError ? <span className="dash-attendance__error">{actionError}</span> : null}
+        {error ? <span className="dash-attendance__error">{error}</span> : null}
       </div>
     </section>
   );

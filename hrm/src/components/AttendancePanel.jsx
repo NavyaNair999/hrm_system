@@ -104,22 +104,52 @@ export default function AttendancePanel() {
 
   const btnLabel = isDone ? "Done ✓" : isCheckedIn ? "Check Out" : "Check In";
 
-  async function handleBtn() {
-    if (isDone || btnLoading) return;
-    setMutationError(null);
-    setBtnLoading(true);
-    try {
-      if (isCheckedIn) {
-        await checkOutMut();
-      } else {
-        await checkInMut();
+async function handleBtn() {
+  if (isDone || btnLoading) return;
+  setMutationError(null);
+  setBtnLoading(true);
+
+  try {
+    if (isCheckedIn) {
+      await checkOutMut();
+    } else {
+      // Check if geolocation is available at all
+      if (!navigator.geolocation) {
+        throw new Error("Geolocation is not supported by your browser.");
       }
-    } catch (e) {
-      setMutationError(e.message);
-    } finally {
-      setBtnLoading(false);
+
+      const position = await new Promise((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        })
+      ).catch((geoErr) => {
+        // Map GeolocationPositionError codes to readable messages
+        const messages = {
+          1: "Location permission denied. Please allow location access and try again.",
+          2: "Location unavailable. Check your device GPS or network.",
+          3: "Location request timed out. Try again.",
+        };
+        throw new Error(messages[geoErr.code] || "Could not get your location.");
+      });
+
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      // Sanity check before sending to GraphQL
+      if (typeof lat !== "number" || typeof lng !== "number") {
+        throw new Error("Invalid location data received.");
+      }
+
+      await checkInMut({ variables: { lat, lng } });
     }
+  } catch (e) {
+    setMutationError(e.message || "Something went wrong.");
+  } finally {
+    setBtnLoading(false);
   }
+}
 
   const sortedDates = useMemo(
     () => Object.keys(attendanceMap).sort((a, b) => (a < b ? 1 : -1)),

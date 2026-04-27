@@ -20,19 +20,32 @@ export default function EmpDashboard({ currentUser, setTab }) {
 
   const totalLeaves = balance?.paid ?? 0;
   const usedLeaves = balance?.used ?? 0;
-  const earnedRemaining = Math.max(0, totalLeaves - usedLeaves);
+  const earnedRemaining = totalLeaves - usedLeaves;
   const sickLeaves = balance?.casual ?? 0;
-  const chartTotal = Math.max(earnedRemaining + sickLeaves, 1);
+  const totalDaysLeft = earnedRemaining + sickLeaves;
+  const isNegative = totalDaysLeft < 0;
+  const isZero = totalDaysLeft === 0;
+
+  const daysLabel = isNegative
+    ? `Leaves exceeded by ${Math.abs(totalDaysLeft)}`
+    : isZero
+    ? "No days left"
+    : "days left";
+
+  const daysColor = isNegative ? "#dc2626 " : isZero ? "#f97316" : "var(--text-primary)";
+  
+  const chartTotal = Math.max(Math.abs(earnedRemaining) + sickLeaves, 1);
   const earnedPercent = (earnedRemaining / chartTotal) * 100;
   const sickPercent = (sickLeaves / chartTotal) * 100;
-  const pieBackground =
-    sickLeaves > 0 && earnedRemaining > 0
-      ? `conic-gradient(#2563eb 0% ${earnedPercent}%, #f97316 ${earnedPercent}% 100%)`
-      : earnedRemaining > 0
-      ? "#2563eb"
-      : sickLeaves > 0
-      ? "#f97316"
-      : "#e2e8f0";
+  const pieBackground = isNegative
+  ? "#dc2626"
+  : sickLeaves > 0 && earnedRemaining > 0
+  ? `conic-gradient(#2563eb 0% ${earnedPercent}%, #f97316 ${earnedPercent}% 100%)`
+  : earnedRemaining > 0
+  ? "#2563eb"
+  : sickLeaves > 0
+  ? "#f97316"
+  : "#e2e8f0";
 
   return (
     <div className="emp-dashboard">
@@ -66,8 +79,12 @@ export default function EmpDashboard({ currentUser, setTab }) {
                 </div>
 
                 <div className="leave-chart-center">
-                  <strong>{earnedRemaining + sickLeaves}</strong>
-                  <span>days left</span>
+                  <strong style={{ color: daysColor, fontSize: isNegative ? "1.6rem" : "2.2rem" }}>
+                    {isNegative ? `-${Math.abs(totalDaysLeft)}` : totalDaysLeft}
+                  </strong>
+                  <span style={{ color: daysColor, fontWeight: isNegative || isZero ? 600 : 400 }}>
+                    {daysLabel}
+                  </span>
                 </div>
               </div>
 
@@ -76,7 +93,9 @@ export default function EmpDashboard({ currentUser, setTab }) {
                   <span className="legend-dot earned" />
                   <div>
                     <strong>Earned Leave</strong>
-                    <small>{earnedRemaining} remaining</small>
+                    <small style={{ color: earnedRemaining < 0 ? "#dc2626" : "inherit" }}>
+                      {earnedRemaining < 0 ? `${earnedRemaining} (exceeded)` : `${earnedRemaining} remaining`}
+                    </small>
                   </div>
                 </div>
                 <div className="leave-legend-item">

@@ -79,7 +79,7 @@
 
 .leave-chart-core {
   position: absolute;
-  inset: 56px;
+  inset: 20px;
   border-radius: 50%;
   background: var(--bg-primary);
 }
