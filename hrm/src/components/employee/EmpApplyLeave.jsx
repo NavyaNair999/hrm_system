@@ -176,7 +176,7 @@ function LeaveBalanceCards({ balance, leaves }) {
 
             {/* Big remaining count */}
 
-            // handle negative and zero remaining cases by omkar on 26/4/26
+            {/* handle negative and zero remaining cases by omkar on 26/4/26 */}
             <div style={{
                   fontSize: 40, fontWeight: 800, color: c.color,
                   lineHeight: 1, marginBottom: 2,
