@@ -86,17 +86,8 @@ const FALLBACK_DEPARTMENTS = [
   "Sales", "HR", "Finance", "Operations", "Legal", "Other",
 ];
 
-const sectionTitle = {
-  fontSize: 11,
-  fontWeight: 700,
-  color: "#888",
-  textTransform: "uppercase",
-  letterSpacing: "0.6px",
-  marginBottom: 10,
-  marginTop: 4,
-  paddingBottom: 6,
-  borderBottom: "1px solid #f0e8e8",
-};
+// sectionTitle removed, using .section-title class
+
 // scheduler and department/designation management links added by omkar on 25/4/26
 function buildDayVarsFromSchedule(schedule) {
   const workingDays = new Set((schedule?.workingDays || []).map((day) => day.toLowerCase()));
@@ -236,7 +227,7 @@ export default function AddEmployee() {
         <div className="card-sub">Fill in the details to create a new employee account</div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={sectionTitle}>Account</div>
+          <div className="section-title">Account</div>
 
           {field(
             "username",
@@ -303,9 +294,9 @@ export default function AddEmployee() {
             </div>
           </div>
 
-          <div style={{ ...sectionTitle, marginTop: 8 }}>Profile</div>
+          <div className="section-title" style={{ marginTop: 8 }}>Profile</div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="grid-2">
             <div className="field">
               <label>Employee Number</label>
               <input
@@ -336,7 +327,7 @@ export default function AddEmployee() {
             </select>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="grid-2">
             <div className="field">
               <label>Department</label>
               <select value={form.department} onChange={(event) => setForm((current) => ({ ...current, department: event.target.value }))}>
@@ -361,7 +352,7 @@ export default function AddEmployee() {
             </div>
           </div>
 
-          <div style={{ ...sectionTitle, marginTop: 8 }}>Schedule</div>
+          <div className="section-title" style={{ marginTop: 8 }}>Schedule</div>
 
           <div className="field">
             <label>Managed Schedule</label>

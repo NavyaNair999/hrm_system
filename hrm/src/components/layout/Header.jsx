@@ -22,7 +22,7 @@ export default function Header({ user, onLogout, isAdmin, onHamburger, onThemeTo
         <div className="hrm-brand-logo">
           <img src="/Vector.png" alt="HRM System Logo" className="hrm-brand-logo-img" />
         </div>
-        <div>
+        <div className="hrm-brand-info">
           <div className="hrm-brand-name">INFIDHI VENTURES PVT. LTD.</div>
           <div className="hrm-brand-sub">
             {isAdmin ? "Admin Dashboard" : "Employee Dashboard"}

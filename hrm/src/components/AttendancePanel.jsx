@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
-
+import "./AttendancePanel.css";
 
 const ATTENDANCE_QUERY = gql`
   query GetAttendance {
@@ -38,16 +38,12 @@ const CHECK_OUT = gql`
   }
 `;
 
-// // ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function getTodayIST() {
-  // Pure UTC offset math — reliable on ALL OS/browser/locale combos.
   return new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().split("T")[0];
 }
 
 function parseAttendanceTimestamp(value) {
   if (!value) return null;
-  // Backend always returns full ISO strings — new Date() handles them correctly.
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
@@ -55,7 +51,6 @@ function parseAttendanceTimestamp(value) {
 function formatLocalTime(isoStr) {
   const parsed = parseAttendanceTimestamp(isoStr);
   if (!parsed) return "—";
-  // Manual IST offset — toLocaleTimeString is broken on Windows machines
   const ist = new Date(parsed.getTime() + 5.5 * 60 * 60 * 1000);
   const h = ist.getUTCHours(); const m = ist.getUTCMinutes();
   return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "pm" : "am"}`;
@@ -66,8 +61,6 @@ function formatDate(dateStr) {
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   return `${d} ${months[m - 1]} ${y}`;
 }
-
-// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function AttendancePanel() {
   const todayStr = getTodayIST();
@@ -104,52 +97,49 @@ export default function AttendancePanel() {
 
   const btnLabel = isDone ? "Done ✓" : isCheckedIn ? "Check Out" : "Check In";
 
-async function handleBtn() {
-  if (isDone || btnLoading) return;
-  setMutationError(null);
-  setBtnLoading(true);
+  async function handleBtn() {
+    if (isDone || btnLoading) return;
+    setMutationError(null);
+    setBtnLoading(true);
 
-  try {
-    if (isCheckedIn) {
-      await checkOutMut();
-    } else {
-      // Check if geolocation is available at all
-      if (!navigator.geolocation) {
-        throw new Error("Geolocation is not supported by your browser.");
+    try {
+      if (isCheckedIn) {
+        await checkOutMut();
+      } else {
+        if (!navigator.geolocation) {
+          throw new Error("Geolocation is not supported by your browser.");
+        }
+
+        const position = await new Promise((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0,
+          })
+        ).catch((geoErr) => {
+          const messages = {
+            1: "Location permission denied. Please allow location access and try again.",
+            2: "Location unavailable. Check your device GPS or network.",
+            3: "Location request timed out. Try again.",
+          };
+          throw new Error(messages[geoErr.code] || "Could not get your location.");
+        });
+
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        if (typeof lat !== "number" || typeof lng !== "number") {
+          throw new Error("Invalid location data received.");
+        }
+
+        await checkInMut({ variables: { lat, lng } });
       }
-
-      const position = await new Promise((resolve, reject) =>
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
-        })
-      ).catch((geoErr) => {
-        // Map GeolocationPositionError codes to readable messages
-        const messages = {
-          1: "Location permission denied. Please allow location access and try again.",
-          2: "Location unavailable. Check your device GPS or network.",
-          3: "Location request timed out. Try again.",
-        };
-        throw new Error(messages[geoErr.code] || "Could not get your location.");
-      });
-
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-
-      // Sanity check before sending to GraphQL
-      if (typeof lat !== "number" || typeof lng !== "number") {
-        throw new Error("Invalid location data received.");
-      }
-
-      await checkInMut({ variables: { lat, lng } });
+    } catch (e) {
+      setMutationError(e.message || "Something went wrong.");
+    } finally {
+      setBtnLoading(false);
     }
-  } catch (e) {
-    setMutationError(e.message || "Something went wrong.");
-  } finally {
-    setBtnLoading(false);
   }
-}
 
   const sortedDates = useMemo(
     () => Object.keys(attendanceMap).sort((a, b) => (a < b ? 1 : -1)),
@@ -158,23 +148,22 @@ async function handleBtn() {
 
   if (loading && !data) {
     return (
-      <div style={styles.loadingWrap}>
-        <div style={styles.loadingSpinner} />
-        <span style={styles.loadingText}>Loading attendance…</span>
+      <div className="attendance-loading-wrap">
+        <div className="attendance-loading-spinner" />
+        <span className="attendance-loading-text">Loading attendance…</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={styles.errorFull}>
+      <div className="attendance-error-full">
         <span style={{ fontSize: 20 }}>⚠️</span>
         <span>{error.message}</span>
       </div>
     );
   }
 
-  // Derive status info for the hero card
   const statusConfig = isDone
     ? { label: "Day Completed", dot: "#22c55e", bg: "rgba(34,197,94,0.08)", icon: "✅" }
     : isCheckedIn
@@ -182,47 +171,46 @@ async function handleBtn() {
       : { label: "Not Checked In Yet", dot: "#9ca3af", bg: "rgba(156,163,175,0.08)", icon: "⚪" };
 
   return (
-    <div style={styles.wrapper}>
-
-      {/* ── Page Header ── */}
-      <div style={styles.pageHeader}>
-        <div style={styles.pageHeaderLeft}>
-          <div style={styles.pageTitle}>Attendance</div>
-          <div style={styles.pageSubtitle}>Track your daily check-ins and work hours</div>
+    <div className="attendance-wrapper">
+      <div className="attendance-page-header">
+        <div className="attendance-page-header-left">
+          <div className="attendance-page-title">Attendance</div>
+          <div className="attendance-page-subtitle">Track your daily check-ins and work hours</div>
         </div>
-        <div style={styles.todayChip}>
+        <div className="attendance-today-chip">
           📅 {formatDate(todayStr)}
         </div>
       </div>
 
-      {/* ── Today's Hero Card ── */}
-      <div style={styles.heroCard}>
-        <div style={{ ...styles.heroBadge, background: statusConfig.bg }}>
-          <span style={{ ...styles.heroDot, background: statusConfig.dot }} />
-          <span style={styles.heroBadgeText}>{statusConfig.label}</span>
-        </div>
+      <div className="attendance-hero-card">
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
+          <div className="attendance-hero-badge" style={{ background: statusConfig.bg }}>
+            <span className="attendance-hero-dot" style={{ background: statusConfig.dot }} />
+            <span className="attendance-hero-badge-text">{statusConfig.label}</span>
+          </div>
 
-        <div style={styles.heroTimeRow}>
-          <div style={styles.heroTimeBlock}>
-            <div style={styles.heroTimeLabel}>Check In</div>
-            <div style={styles.heroTimeValue}>
-              {todayRec?.checkIn ? formatLocalTime(todayRec.checkIn) : "—"}
+          <div className="attendance-hero-time-row">
+            <div className="attendance-hero-time-block">
+              <div className="attendance-hero-time-label">Check In</div>
+              <div className="attendance-hero-time-value">
+                {todayRec?.checkIn ? formatLocalTime(todayRec.checkIn) : "—"}
+              </div>
             </div>
-          </div>
-          <div style={styles.heroTimeDivider} />
-          <div style={styles.heroTimeBlock}>
-            <div style={styles.heroTimeLabel}>Check Out</div>
-            <div style={styles.heroTimeValue}>
-              {todayRec?.checkOut ? formatLocalTime(todayRec.checkOut) : "—"}
+            <div className="attendance-hero-time-divider" />
+            <div className="attendance-hero-time-block">
+              <div className="attendance-hero-time-label">Check Out</div>
+              <div className="attendance-hero-time-value">
+                {todayRec?.checkOut ? formatLocalTime(todayRec.checkOut) : "—"}
+              </div>
             </div>
-          </div>
-          <div style={styles.heroTimeDivider} />
-          <div style={styles.heroTimeBlock}>
-            <div style={styles.heroTimeLabel}>Hours Worked</div>
-            <div style={styles.heroTimeValue}>
-              {todayRec?.hoursWorked && todayRec.hoursWorked !== "0.00"
-                ? `${todayRec.hoursWorked}h`
-                : "—"}
+            <div className="attendance-hero-time-divider" />
+            <div className="attendance-hero-time-block">
+              <div className="attendance-hero-time-label">Hours</div>
+              <div className="attendance-hero-time-value">
+                {todayRec?.hoursWorked && todayRec.hoursWorked !== "0.00"
+                  ? `${todayRec.hoursWorked}h`
+                  : "—"}
+              </div>
             </div>
           </div>
         </div>
@@ -230,59 +218,44 @@ async function handleBtn() {
         <button
           onClick={handleBtn}
           disabled={isDone || btnLoading}
-          style={{
-            ...styles.actionBtn,
-            ...(isDone
-              ? styles.actionBtnDone
-              : isCheckedIn
-                ? styles.actionBtnOut
-                : styles.actionBtnIn),
-          }}
+          style={isDone ? styles.actionBtnDone : isCheckedIn ? styles.actionBtnOut : styles.actionBtnIn}
+          className="attendance-action-btn"
         >
-          {btnLoading ? (
-            <span style={styles.btnSpinner} />
-          ) : (
-            btnLabel
-          )}
+          {btnLoading ? <span className="btn-spinner" /> : btnLabel}
         </button>
       </div>
 
-      {/* ── Error message ── */}
       {mutationError && (
-        <div style={styles.errorBox}>
+        <div className="attendance-error-box">
           <span>⚠️</span> {mutationError}
         </div>
       )}
 
-      {/* ── History Table ── */}
-      <div style={styles.tableCard}>
-        <div style={styles.tableHeader}>
-          <div style={styles.tableTitle}>Attendance History</div>
-          <div style={styles.tableCount}>{sortedDates.length} records</div>
+      <div className="attendance-table-card">
+        <div className="attendance-table-header">
+          <div className="attendance-table-title">Attendance History</div>
+          <div className="attendance-table-count">{sortedDates.length} records</div>
         </div>
 
-        <div style={styles.tableWrap}>
-          <table style={styles.table}>
+        <div className="attendance-table-wrap">
+          <table className="attendance-table">
             <thead>
               <tr>
-                {["Date", "Check In", "Check Out", "Hours", "Status"].map((h) => (
-                  <th key={h} style={styles.th}>{h}</th>
+                {["Date", "In", "Out", "Hours", "Status"].map((h) => (
+                  <th key={h}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {sortedDates.length === 0 && (
                 <tr>
-                  <td colSpan={5} style={styles.emptyCell}>
-                    No attendance records yet
-                  </td>
+                  <td colSpan={5} className="empty-cell">No records yet</td>
                 </tr>
               )}
 
               {sortedDates.map((date, i) => {
                 const rec = attendanceMap[date];
                 const isToday = date === todayStr;
-
                 const status = rec.isHoliday
                   ? { label: "Holiday", color: "#8b5cf6", bg: "rgba(139,92,246,0.1)" }
                   : rec.checkIn
@@ -292,43 +265,18 @@ async function handleBtn() {
                     : { label: "Absent", color: "#ef4444", bg: "rgba(239,68,68,0.1)" };
 
                 return (
-                  <tr
-                    key={date}
-                    style={{
-                      ...styles.tr,
-                      ...(isToday ? styles.todayRow : {}),
-                      ...(i % 2 === 0 && !isToday ? styles.evenRow : {}),
-                    }}
-                  >
-                    <td style={styles.td}>
-                      <div style={styles.dateCell}>
+                  <tr key={date} className={isToday ? "today-row" : i % 2 === 0 ? "even-row" : ""}>
+                    <td>
+                      <div className="date-cell">
                         <span>{formatDate(date)}</span>
-                        {isToday && <span style={styles.todayBadge}>Today</span>}
+                        {isToday && <span className="today-badge">Today</span>}
                       </div>
                     </td>
-                    <td style={styles.td}>
-                      <span style={rec.checkIn ? styles.timeIn : styles.timeDash}>
-                        {formatLocalTime(rec.checkIn)}
-                      </span>
-                    </td>
-                    <td style={styles.td}>
-                      <span style={rec.checkOut ? styles.timeOut : styles.timeDash}>
-                        {formatLocalTime(rec.checkOut)}
-                      </span>
-                    </td>
-                    <td style={styles.td}>
-                      <span style={styles.hoursCell}>
-                        {rec.hoursWorked && rec.hoursWorked !== "0.00"
-                          ? `${rec.hoursWorked} hrs`
-                          : "—"}
-                      </span>
-                    </td>
-                    <td style={styles.td}>
-                      <span style={{
-                        ...styles.statusPill,
-                        color: status.color,
-                        background: status.bg,
-                      }}>
+                    <td><span className={rec.checkIn ? "time-in" : "time-dash"}>{formatLocalTime(rec.checkIn)}</span></td>
+                    <td><span className={rec.checkOut ? "time-out" : "time-dash"}>{formatLocalTime(rec.checkOut)}</span></td>
+                    <td><span className="hours-cell">{rec.hoursWorked && rec.hoursWorked !== "0.00" ? `${rec.hoursWorked}h` : "—"}</span></td>
+                    <td>
+                      <span className="status-pill" style={{ color: status.color, background: status.bg }}>
                         {status.label}
                       </span>
                     </td>
@@ -341,316 +289,32 @@ async function handleBtn() {
       </div>
 
       <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .attendance-loading-wrap { display: flex; align-items: center; gap: 12px; padding: 40px; justify-content: center; color: #6b7280; }
+        .attendance-loading-spinner { width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(220,38,38,0.2); border-top-color: #dc2626; animation: spin 0.7s linear infinite; }
+        .attendance-action-btn { padding: 12px 28px; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; transition: transform 0.1s, opacity 0.15s; }
+        .attendance-action-btn:active { transform: scale(0.98); }
+        .attendance-action-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+        .btn-spinner { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; animation: spin 0.7s linear infinite; }
+        
+        .attendance-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .attendance-table th { padding: 12px 16px; text-align: left; font-size: 11px; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb; background: #f9fafb; }
+        .attendance-table td { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; }
+        .today-row { background: rgba(220,38,38,0.05); }
+        .even-row { background: #fafafa; }
+        .date-cell { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+        .today-badge { font-size: 10px; font-weight: 700; background: #dc2626; color: #fff; border-radius: 4px; padding: 1px 6px; }
+        .time-in { color: #16a34a; font-weight: 600; }
+        .time-out { color: #ea580c; font-weight: 600; }
+        .time-dash { color: #9ca3af; }
+        .hours-cell { font-weight: 600; }
       `}</style>
     </div>
   );
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
-
-const RED = "#dc2626";
-const RED_LIGHT = "rgba(220,38,38,0.08)";
-const RED_BORDER = "rgba(220,38,38,0.2)";
-
 const styles = {
-  wrapper: {
-    padding: "28px 32px",
-    fontFamily: "'Segoe UI', system-ui, sans-serif",
-    maxWidth: 900,
-    color: "var(--text-primary, #111)",
-  },
-
-  // ── Loading / Error ──
-  loadingWrap: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    padding: 40,
-    justifyContent: "center",
-    color: "#6b7280",
-  },
-  loadingSpinner: {
-    width: 20,
-    height: 20,
-    borderRadius: "50%",
-    border: `2px solid ${RED_BORDER}`,
-    borderTopColor: RED,
-    animation: "spin 0.7s linear infinite",
-  },
-  loadingText: {
-    fontSize: 14,
-  },
-  errorFull: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    padding: 24,
-    background: "rgba(239,68,68,0.07)",
-    border: "1px solid rgba(239,68,68,0.2)",
-    borderRadius: 10,
-    color: "#b91c1c",
-    fontSize: 14,
-  },
-
-  // ── Page Header ──
-  pageHeader: {
-    display: "flex",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    marginBottom: 24,
-  },
-  pageHeaderLeft: {},
-  pageTitle: {
-    fontSize: 22,
-    fontWeight: 800,
-    color: "var(--text-primary, #111)",
-    letterSpacing: "-0.3px",
-  },
-  pageSubtitle: {
-    fontSize: 13,
-    color: "var(--text-secondary, #6b7280)",
-    marginTop: 3,
-  },
-  todayChip: {
-    fontSize: 13,
-    fontWeight: 600,
-    color: RED,
-    background: RED_LIGHT,
-    border: `1px solid ${RED_BORDER}`,
-    borderRadius: 20,
-    padding: "5px 14px",
-  },
-
-  // ── Hero Card ──
-  heroCard: {
-    background: "var(--bg-primary, #fff)",
-    border: `1px solid var(--border-color, #e5e7eb)`,
-    borderRadius: 14,
-    padding: "24px 28px",
-    marginBottom: 20,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    flexWrap: "wrap",
-    gap: 20,
-    boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
-    borderLeft: `4px solid ${RED}`,
-  },
-  heroBadge: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 7,
-    padding: "5px 12px",
-    borderRadius: 20,
-    marginBottom: 14,
-    alignSelf: "flex-start",
-  },
-  heroDot: {
-    width: 8,
-    height: 8,
-    borderRadius: "50%",
-    flexShrink: 0,
-  },
-  heroBadgeText: {
-    fontSize: 12,
-    fontWeight: 600,
-    color: "var(--text-secondary, #374151)",
-  },
-  heroTimeRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: 0,
-    flex: 1,
-  },
-  heroTimeBlock: {
-    textAlign: "center",
-    padding: "0 24px",
-  },
-  heroTimeLabel: {
-    fontSize: 11,
-    fontWeight: 600,
-    color: "var(--text-tertiary, #9ca3af)",
-    textTransform: "uppercase",
-    letterSpacing: "0.6px",
-    marginBottom: 4,
-  },
-  heroTimeValue: {
-    fontSize: 20,
-    fontWeight: 700,
-    color: "var(--text-primary, #111)",
-    letterSpacing: "-0.3px",
-  },
-  heroTimeDivider: {
-    width: 1,
-    height: 36,
-    background: "var(--border-color, #e5e7eb)",
-  },
-
-  // ── Action Button ──
-  actionBtn: {
-    padding: "10px 28px",
-    border: "none",
-    borderRadius: 8,
-    cursor: "pointer",
-    fontWeight: 700,
-    fontSize: 14,
-    letterSpacing: "0.2px",
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    transition: "transform 0.1s, opacity 0.15s",
-    flexShrink: 0,
-  },
-  actionBtnIn: {
-    background: `linear-gradient(135deg, ${RED}, #ef4444)`,
-    color: "#fff",
-    boxShadow: `0 4px 12px rgba(220,38,38,0.3)`,
-  },
-  actionBtnOut: {
-    background: "linear-gradient(135deg, #f97316, #fb923c)",
-    color: "#fff",
-    boxShadow: "0 4px 12px rgba(249,115,22,0.3)",
-  },
-  actionBtnDone: {
-    background: "#f3f4f6",
-    color: "#9ca3af",
-    cursor: "not-allowed",
-    boxShadow: "none",
-  },
-  btnSpinner: {
-    display: "inline-block",
-    width: 14,
-    height: 14,
-    borderRadius: "50%",
-    border: "2px solid rgba(255,255,255,0.4)",
-    borderTopColor: "#fff",
-    animation: "spin 0.7s linear infinite",
-  },
-
-  // ── Error Box ──
-  errorBox: {
-    background: "rgba(239,68,68,0.07)",
-    color: "#b91c1c",
-    border: "1px solid rgba(239,68,68,0.2)",
-    borderRadius: 8,
-    padding: "10px 16px",
-    marginBottom: 16,
-    fontSize: 13,
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-  },
-
-  // ── Table Card ──
-  tableCard: {
-    background: "var(--bg-primary, #fff)",
-    border: "1px solid var(--border-color, #e5e7eb)",
-    borderRadius: 14,
-    overflow: "hidden",
-    boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
-  },
-  tableHeader: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "16px 20px",
-    borderBottom: "1px solid var(--border-color, #e5e7eb)",
-    background: "var(--bg-secondary, #f9fafb)",
-  },
-  tableTitle: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: "var(--text-primary, #111)",
-  },
-  tableCount: {
-    fontSize: 12,
-    color: "var(--text-tertiary, #9ca3af)",
-    background: "var(--bg-tertiary, #f3f4f6)",
-    border: "1px solid var(--border-color, #e5e7eb)",
-    borderRadius: 12,
-    padding: "2px 10px",
-  },
-  tableWrap: {
-    overflowX: "auto",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-    fontSize: 13,
-  },
-  th: {
-    padding: "11px 16px",
-    textAlign: "left",
-    fontWeight: 700,
-    fontSize: 11,
-    textTransform: "uppercase",
-    letterSpacing: "0.6px",
-    color: "var(--text-tertiary, #6b7280)",
-    borderBottom: "1px solid var(--border-color, #e5e7eb)",
-    background: "var(--bg-secondary, #f9fafb)",
-    whiteSpace: "nowrap",
-  },
-  tr: {
-    transition: "background 0.12s",
-  },
-  evenRow: {
-    background: "var(--bg-secondary, #fafafa)",
-  },
-  todayRow: {
-    background: RED_LIGHT,
-  },
-  td: {
-    padding: "11px 16px",
-    borderBottom: "1px solid var(--border-color, #f0f0f0)",
-    verticalAlign: "middle",
-    color: "var(--text-primary, #374151)",
-  },
-  emptyCell: {
-    padding: "32px 16px",
-    textAlign: "center",
-    color: "var(--text-tertiary, #9ca3af)",
-    fontSize: 13,
-  },
-
-  // ── Cell details ──
-  dateCell: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    fontWeight: 500,
-  },
-  todayBadge: {
-    fontSize: 10,
-    fontWeight: 700,
-    background: RED,
-    color: "#fff",
-    borderRadius: 4,
-    padding: "1px 6px",
-    letterSpacing: "0.3px",
-  },
-  timeIn: {
-    color: "#16a34a",
-    fontWeight: 600,
-  },
-  timeOut: {
-    color: "#ea580c",
-    fontWeight: 600,
-  },
-  timeDash: {
-    color: "var(--text-tertiary, #9ca3af)",
-  },
-  hoursCell: {
-    fontWeight: 600,
-    color: "var(--text-secondary, #374151)",
-  },
-  statusPill: {
-    display: "inline-block",
-    padding: "3px 10px",
-    borderRadius: 20,
-    fontSize: 12,
-    fontWeight: 600,
-  },
+  actionBtnIn: { background: "linear-gradient(135deg, #dc2626, #ef4444)", color: "#fff", boxShadow: "0 4px 12px rgba(220,38,38,0.3)" },
+  actionBtnOut: { background: "linear-gradient(135deg, #f97316, #fb923c)", color: "#fff", boxShadow: "0 4px 12px rgba(249,115,22,0.3)" },
+  actionBtnDone: { background: "#f3f4f6", color: "#9ca3af", boxShadow: "none" },
 };

@@ -31,7 +31,13 @@
 .hrm-brand {
   display: flex;
   align-items: center;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-md);
+}
+
+.hrm-brand-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .hrm-brand-logo {

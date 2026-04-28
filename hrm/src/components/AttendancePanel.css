@@ -1,0 +1,157 @@
+.attendance-wrapper {
+  padding: 28px 32px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.attendance-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.attendance-page-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.attendance-page-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 3px;
+}
+
+.attendance-today-chip {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 5px 14px;
+}
+
+.attendance-hero-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 24px 28px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 24px;
+  box-shadow: var(--shadow-sm);
+  border-left: 4px solid var(--color-primary);
+}
+
+.attendance-hero-time-row {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 300px;
+}
+
+.attendance-hero-time-block {
+  flex: 1;
+  text-align: center;
+  padding: 0 10px;
+}
+
+.attendance-hero-time-divider {
+  width: 1px;
+  height: 36px;
+  background: var(--border-color);
+}
+
+.attendance-hero-time-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 4px;
+}
+
+.attendance-hero-time-value {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.attendance-table-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.attendance-table-wrap {
+  overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+  .attendance-wrapper {
+    padding: 16px;
+  }
+
+  .attendance-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .attendance-hero-card {
+    padding: 20px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .attendance-hero-time-row {
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+  }
+
+  .attendance-hero-time-divider {
+    width: 100%;
+    height: 1px;
+  }
+
+  .attendance-hero-time-block {
+    padding: 0;
+  }
+
+  .attendance-action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .attendance-table-wrap {
+    margin: 0 -10px;
+  }
+
+  .attendance-table th, .attendance-table td {
+    padding: 8px 10px !important;
+    font-size: 11px !important;
+  }
+
+  .date-cell {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+  }
+}
+
+/* Status Pills */
+.status-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}

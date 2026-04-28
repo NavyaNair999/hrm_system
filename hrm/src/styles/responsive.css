@@ -2,7 +2,7 @@
 /* RESPONSIVE DESIGN                                                           */
 /* ──────────────────────────────────────────────────────────────────────────── */
 
-/* ── Tablet & Small Desktop (768px) ── */
+/* ── Tablet & Small Desktop (1024px) ── */
 @media (max-width: 1024px) {
   .hrm-sidebar {
     width: 220px;
@@ -16,17 +16,9 @@
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .two-col {
-    grid-template-columns: 1fr;
-  }
 }
 
-/* ── Mobile Landscape (768px) ── */
+/* ── Mobile Landscape & Tablets (768px) ── */
 @media (max-width: 768px) {
   .hrm-header {
     padding: 0 var(--spacing-md);
@@ -49,20 +41,28 @@
   }
 
   .hrm-main {
-    padding: var(--spacing-lg);
+    padding: var(--spacing-md);
   }
 
   .hamburger {
     display: flex !important;
   }
 
-  .form-grid {
-    grid-template-columns: 1fr;
+  /* Force stack all grids on mobile */
+  .form-grid,
+  .grid-2,
+  .grid-3,
+  .two-col,
+  .three-col,
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: var(--spacing-lg);
   }
 
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--spacing-md);
+  /* Force stack inline styles that use grid */
+  div[style*="grid-template-columns: 1fr 1fr"],
+  div[style*="grid-template-columns: 1fr auto"] {
+    grid-template-columns: 1fr !important;
   }
 
   .page-header h1 {
@@ -71,15 +71,8 @@
 
   .card {
     padding: var(--spacing-md);
-  }
-
-  .two-col,
-  .three-col {
-    grid-template-columns: 1fr;
-  }
-
-  .login-card {
-    padding: var(--spacing-lg);
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
   h1 {
@@ -91,145 +84,6 @@
   }
 
   table {
-    font-size: 12px;
-  }
-
-  th,
-  td {
-    padding: 10px 8px;
-  }
-
-  .badge {
-    font-size: 11px;
-    padding: 3px 8px;
-  }
-}
-
-/* ── Mobile (480px) ── */
-@media (max-width: 480px) {
-  .hrm-header {
-    padding: 0 var(--spacing-sm);
-    height: 56px;
-  }
-
-  .hrm-brand {
-    gap: var(--spacing-sm);
-  }
-
-  .hrm-brand-logo {
-    width: 36px;
-    height: 36px;
-    font-size: 14px;
-  }
-
-  .hrm-brand-name {
-    font-size: 14px;
-  }
-
-  .hrm-brand-sub {
-    font-size: 11px;
-  }
-
-  .hrm-header-right {
-    gap: var(--spacing-md);
-  }
-
-  .hrm-user-pill {
-    display: none;
-  }
-
-  .hrm-main {
-    padding: var(--spacing-md);
-  }
-
-  .page-header h1 {
-    font-size: 18px;
-  }
-
-  .page-header p {
-    font-size: 12px;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr;
-    gap: var(--spacing-md);
-  }
-
-  .stat-card {
-    padding: var(--spacing-md);
-  }
-
-  .stat-value {
-    font-size: 24px;
-  }
-
-  .stat-label {
-    font-size: 11px;
-  }
-
-  .card {
-    padding: var(--spacing-md);
-  }
-
-  .card-title {
-    font-size: 16px;
-  }
-
-  .login-card {
-    margin: var(--spacing-md);
-    padding: var(--spacing-lg);
-  }
-
-  .login-logo {
-    width: 50px;
-    height: 50px;
-    font-size: 20px;
-  }
-
-  .login-title {
-    font-size: 22px;
-  }
-
-  .login-fields {
-    gap: var(--spacing-md);
-  }
-
-  .btn-primary,
-  .btn-secondary {
-    padding: 10px 16px;
-    font-size: 13px;
-  }
-
-  input,
-  select,
-  textarea {
-    padding: 10px 12px;
-    font-size: 16px; /* Prevent zoom on iOS */
-  }
-
-  .form-grid {
-    grid-template-columns: 1fr;
-    gap: var(--spacing-lg);
-  }
-
-  .form-inline {
-    flex-direction: column;
-  }
-
-  .form-inline button {
-    margin-top: 0;
-    width: 100%;
-  }
-
-  .form-actions {
-    flex-direction: column-reverse;
-  }
-
-  .form-actions button {
-    width: 100%;
-  }
-
-  table {
     font-size: 11px;
   }
 
@@ -238,43 +92,130 @@
     padding: 8px 6px;
   }
 
-  .week-table td {
-    min-height: 50px;
-    min-width: 60px;
-    padding: 8px 4px;
+  .form-actions {
+    flex-direction: column-reverse;
+    gap: 10px;
   }
 
-  .badge {
+  .form-actions button {
+    width: 100%;
+  }
+
+  input[type="date"],
+  input[type="time"],
+  input[type="text"],
+  input[type="number"],
+  input[type="password"],
+  select,
+  textarea {
+    width: 100% !important;
+    box-sizing: border-box;
+    font-size: 16px;
+    /* Prevents iOS zoom */
+  }
+
+  .modal-content {
+    width: 95% !important;
+    max-width: 95% !important;
+    padding: var(--spacing-lg) !important;
+  }
+}
+
+/* ── Small Mobile (480px) ── */
+@media (max-width: 480px) {
+  .hrm-header {
+    height: 60px;
+    padding: 0 var(--spacing-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Center the brand */
+    position: relative;
+  }
+
+  .hamburger {
+    position: absolute;
+    left: var(--spacing-sm);
+    margin: 0;
+  }
+
+  .hrm-header-right {
+    position: absolute;
+    right: var(--spacing-sm);
+    gap: var(--spacing-xs);
+  }
+
+  .hrm-brand {
+    gap: var(--spacing-xs);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .hrm-brand-info {
+    align-items: center;
+    text-align: center;
+  }
+
+  .hrm-brand-logo {
+    width: 30px;
+    height: 30px;
+  }
+
+  .hrm-brand-name {
+    font-size: 12px;
+    white-space: normal;
+    line-height: 1.2;
+    max-width: 140px;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+  }
+
+  .hrm-brand-sub {
     font-size: 10px;
-    padding: 2px 6px;
+    white-space: nowrap;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+  }
+
+  .hrm-header-right {
+    gap: var(--spacing-xs);
+  }
+
+  .hrm-user-pill {
+    display: none;
+  }
+
+  .btn-logout {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .theme-toggle {
+    width: 32px;
+    height: 32px;
   }
 
   .check-status-bar {
-    padding: var(--spacing-md);
-    gap: var(--spacing-md);
     flex-direction: column;
     align-items: flex-start;
+    gap: var(--spacing-md);
   }
+}
 
-  .page-header {
-    margin-bottom: var(--spacing-lg);
-  }
+/* ── Utility Grid Classes ── */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
 
-  h1 {
-    font-size: 1.25rem;
-  }
-
-  h2 {
-    font-size: 1.125rem;
-  }
-
-  h3 {
-    font-size: 1rem;
-  }
-
-  .hrm-layout {
-    min-height: calc(100vh - 56px);
-  }
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
 
 /* ── Utility Classes for Responsiveness ── */

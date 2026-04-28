@@ -341,7 +341,7 @@ function ItemManager({
 
       {feedback.text && <div className={`alert ${feedback.type}`}>{feedback.text}</div>}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 12, marginBottom: 18 }}>
+      <div className="grid-2" style={{ marginBottom: 18, gridTemplateColumns: "1fr auto" }}>
         <input
           value={draftName}
           onChange={(event) => setDraftName(event.target.value)}
@@ -356,14 +356,13 @@ function ItemManager({
         {items.map((item) => (
           <div
             key={item.id}
+            className="grid-2"
             style={{
               border: "1px solid var(--border-color)",
               borderRadius: 14,
               padding: 14,
-              display: "grid",
-              gridTemplateColumns: "1fr auto",
-              gap: 12,
               alignItems: "center",
+              gridTemplateColumns: "1fr auto"
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -479,7 +478,7 @@ function ScheduleModal({ form, setForm, onClose, onSave, loading }) {
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content" style={{ maxWidth: 700 }}>
+      <div className="modal-content" style={{ maxWidth: 700, width: "90%" }}>
         <div className="modal-header">
           <div className="modal-title">{form.id ? "Edit Schedule" : "Create Schedule"}</div>
           <button className="modal-close" type="button" onClick={onClose}>x</button>

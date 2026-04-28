@@ -118,7 +118,7 @@ function AppInner() {
   }
 
   function handleLogout() {
-    localStorage.removeItem("hrm_token"); 
+    localStorage.removeItem("hrm_token");
     setToken("");
     setLoginForm({ username: "", password: "" });
     client.clearStore();
@@ -171,15 +171,15 @@ function AppInner() {
       />
       <div className="hrm-layout">
         <Sidebar
-  tab={tab}
-  user={currentUser}
-  setTab={(t) => {
-    setTab(t);
-    setSidebarOpen(false);
-  }}
-  isAdmin={currentUser?.role === 'admin'} // Changed 'user' to 'currentUser' here
-  open={sidebarOpen}
-/>
+          tab={tab}
+          user={currentUser}
+          setTab={(t) => {
+            setTab(t);
+            setSidebarOpen(false);
+          }}
+          isAdmin={currentUser?.role === 'admin'} // Changed 'user' to 'currentUser' here
+          open={sidebarOpen}
+        />
         <main className="hrm-main">
           {isAdmin ? (
             <AdminView
