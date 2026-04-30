@@ -1,4 +1,5 @@
 import { FiMoon, FiSun } from "react-icons/fi";
+import { useProfilePhoto } from "../profile/Useprofilephoto";
 
 function initials(name) {
   if (!name) return "?";
@@ -12,6 +13,7 @@ function initials(name) {
 
 export default function Header({ user, onLogout, isAdmin, onHamburger, onThemeToggle, isDarkTheme }) {
   const displayName = user?.username || user?.name || "User";
+  const { photoUrl } = useProfilePhoto(user?.id, false);
 
   return (
     <header className="hrm-header">
@@ -40,7 +42,16 @@ export default function Header({ user, onLogout, isAdmin, onHamburger, onThemeTo
           </button>
         )}
         <div className="hrm-user-pill">
-          <div className="hrm-avatar">{initials(displayName)}</div>
+          {photoUrl ? (
+            <img
+              src={photoUrl}
+              alt={displayName}
+              className="hrm-avatar"
+              style={{ objectFit: "cover" }}
+            />
+          ) : (
+            <div className="hrm-avatar">{initials(displayName)}</div>
+          )}
           {displayName}
         </div>
         <button className="btn-logout" onClick={onLogout}>

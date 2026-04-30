@@ -21,6 +21,7 @@ const CREATE_USER = gql`
     $department: String
     $reportsToId: ID
     $joiningDate: String
+    $scheduleId: ID
   ) {
     createUser(
       username: $username
@@ -38,6 +39,7 @@ const CREATE_USER = gql`
       department: $department
       reportsToId: $reportsToId
       joiningDate: $joiningDate
+      scheduleId: $scheduleId
     )
   }
 `;
@@ -183,6 +185,7 @@ export default function AddEmployee() {
           department: form.department || undefined,
           reportsToId: form.reportsToId || undefined,
           joiningDate: form.joiningDate || undefined,
+          scheduleId: form.scheduleId || undefined,
         },
       });
 

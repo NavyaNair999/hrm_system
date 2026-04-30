@@ -8,6 +8,15 @@ import EmployeeReports from "./EmployeeReports";
 // query for settings data by omkar on 25/4/26 
 const SETTINGS_DATA = gql`
   query SettingsData {
+    allUsers {
+      id
+      username
+      employeeNumber
+      designation
+      department
+      isActive
+      workScheduleId
+    }
     departments(includeInactive: true) {
       id
       name
@@ -683,6 +692,7 @@ export default function AdminSettings({ currentUser }) {
   const [scheduleForm, setScheduleForm] = useState(null);
   const [scheduleFeedback, setScheduleFeedback] = useState({ text: "", type: "" });
   const [scheduleToDelete, setScheduleToDelete] = useState(null);
+  const [expandedScheduleId, setExpandedScheduleId] = useState("");
   const normalizedRole = String(currentUser?.role || "").toLowerCase();
 
   const { data, loading, error, refetch } = useQuery(SETTINGS_DATA, {
@@ -705,6 +715,16 @@ export default function AdminSettings({ currentUser }) {
   const departments = data?.departments || [];
   const designations = data?.designations || [];
   const workSchedules = data?.workSchedules || [];
+  const allUsers = data?.allUsers || [];
+  const assignedUsersBySchedule = useMemo(() => {
+    return allUsers.reduce((acc, user) => {
+      const scheduleId = user.workScheduleId ? String(user.workScheduleId) : "";
+      if (!scheduleId) return acc;
+      if (!acc[scheduleId]) acc[scheduleId] = [];
+      acc[scheduleId].push(user);
+      return acc;
+    }, {});
+  }, [allUsers]);
 
   const tiles = useMemo(
     () => [
@@ -741,7 +761,7 @@ export default function AdminSettings({ currentUser }) {
         icon: <FiBarChart2 />,
         title: "Reports Module",
         subtitle: "Attendance export hub for CSV or Excel-style analysis.",
-        // meta: "Settings only",
+        meta: "epxport attendance",
       },
     ],
     [departments, designations, workSchedules]
@@ -864,6 +884,10 @@ export default function AdminSettings({ currentUser }) {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 18 }}>
           {workSchedules.map((schedule) => (
+            (() => {
+              const assignedUsers = assignedUsersBySchedule[String(schedule.id)] || [];
+              const isExpanded = expandedScheduleId === String(schedule.id);
+              return (
             <div
               key={schedule.id}
               style={{
@@ -883,11 +907,67 @@ export default function AdminSettings({ currentUser }) {
                   <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
                     {schedule.scheduleType === "time_based" ? "Time-Based" : "Hours-Based"}
                   </span>
+                  <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                    {assignedUsers.length} assigned
+                  </span>
                 </div>
                 <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 6 }}>{getScheduleSummary(schedule)}</div>
                 <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
                   Working days: {schedule.workingDays.map((day) => day.slice(0, 3)).join(", ")}
                 </div>
+                <div style={{ marginTop: 12 }}>
+                  <button
+                    className="btn-secondary btn-sm"
+                    type="button"
+                    onClick={() => setExpandedScheduleId((current) => current === String(schedule.id) ? "" : String(schedule.id))}
+                  >
+                    {isExpanded ? "Hide Employees" : "View Employees"}
+                  </button>
+                </div>
+                {isExpanded && (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      padding: 14,
+                      borderRadius: 12,
+                      background: "var(--bg-secondary)",
+                      border: "1px solid var(--border-color)",
+                    }}
+                  >
+                    {assignedUsers.length ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {assignedUsers.map((user) => (
+                          <div
+                            key={user.id}
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: 12,
+                              alignItems: "center",
+                              flexWrap: "wrap",
+                              paddingBottom: 10,
+                              borderBottom: "1px solid var(--border-color)",
+                            }}
+                          >
+                            <div>
+                              <div style={{ color: "var(--text-primary)", fontWeight: 600 }}>
+                                {user.employeeNumber ? `${user.employeeNumber} - ` : ""}{user.username}
+                              </div>
+                              <div style={{ color: "var(--text-secondary)", fontSize: 12 }}>
+                                {user.designation || "No designation"} | {user.department || "No department"}
+                              </div>
+                            </div>
+                            <span style={statusPillStyle(user.isActive)}>{user.isActive ? "Active" : "Inactive"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ color: "var(--text-secondary)", fontSize: 13 }}>
+                        No employees are currently assigned to this schedule.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
                 <button
@@ -923,6 +1003,8 @@ export default function AdminSettings({ currentUser }) {
                 </button>
               </div>
             </div>
+              );
+            })()
           ))}
 
           {!workSchedules.length && (

@@ -124,6 +124,7 @@ pool.query(`
   ALTER TABLE users
     ADD COLUMN IF NOT EXISTS date_of_birth     DATE,
     ADD COLUMN IF NOT EXISTS schedule_type     VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS work_schedule_id  INTEGER REFERENCES work_schedules(id),
     ADD COLUMN IF NOT EXISTS biometric_id      VARCHAR(100),
     ADD COLUMN IF NOT EXISTS direct_reporting2 INTEGER REFERENCES users(id)
 `).catch(console.error);
@@ -392,7 +393,14 @@ function mapUser(row) {
     directReporting2: row.dr2_name          || null,
     joiningDate:      row.joining_date      ? pgDateToIST(row.joining_date)  : null,
     dateOfBirth:      row.date_of_birth     ? pgDateToIST(row.date_of_birth) : null,
-    scheduleType:     row.schedule_type     || null,
+    workScheduleId:   row.work_schedule_id  || null,
+    scheduleName:     row.schedule_name     || null,
+    scheduleType:     row.work_schedule_type || row.schedule_type || null,
+    maxCheckInTime:   row.max_check_in_time || null,
+    totalDailyHours:  row.schedule_total_daily_hours || row.total_daily_hours || null,
+    fixedCheckInTime: row.fixed_check_in_time || null,
+    bufferMinutes:    row.buffer_minutes ?? null,
+    fixedCheckOutTime: row.fixed_check_out_time || null,
     biometricId:      row.biometric_id      || null,
     isActive:         row.is_active !== undefined ? row.is_active : true,
   };
@@ -595,10 +603,18 @@ pendingApprovals: async (_, __, { user }) => {
   const res = await pool.query(`
     SELECT u.*,
            m.username AS manager_name,
-           d.username AS dr2_name
+           d.username AS dr2_name,
+           ws.name AS schedule_name,
+           ws.schedule_type AS work_schedule_type,
+           ws.max_check_in_time,
+           ws.total_daily_hours AS schedule_total_daily_hours,
+           ws.fixed_check_in_time,
+           ws.buffer_minutes,
+           ws.fixed_check_out_time
     FROM users u
     LEFT JOIN users m ON m.id = u.reports_to
     LEFT JOIN users d ON d.id = u.direct_reporting2
+    LEFT JOIN work_schedules ws ON ws.id = u.work_schedule_id
     ORDER BY u.id ASC
   `);
   return res.rows.map(mapUser);
@@ -825,10 +841,18 @@ employeeById: async (_, { id }, { user }) => {
   const res = await pool.query(
     `SELECT u.*,
             m.username AS manager_name,
-            d.username AS dr2_name
+            d.username AS dr2_name,
+            ws.name AS schedule_name,
+            ws.schedule_type AS work_schedule_type,
+            ws.max_check_in_time,
+            ws.total_daily_hours AS schedule_total_daily_hours,
+            ws.fixed_check_in_time,
+            ws.buffer_minutes,
+            ws.fixed_check_out_time
      FROM users u
      LEFT JOIN users m ON m.id = u.reports_to
      LEFT JOIN users d ON d.id = u.direct_reporting2
+     LEFT JOIN work_schedules ws ON ws.id = u.work_schedule_id
      WHERE u.id = $1`,
     [id]
   );
@@ -861,10 +885,18 @@ teamMembers: async (_, __, { user }) => {
     res = await pool.query(`
       SELECT u.*,
              m.username AS manager_name,
-             d.username AS dr2_name
+             d.username AS dr2_name,
+             ws.name AS schedule_name,
+             ws.schedule_type AS work_schedule_type,
+             ws.max_check_in_time,
+             ws.total_daily_hours AS schedule_total_daily_hours,
+             ws.fixed_check_in_time,
+             ws.buffer_minutes,
+             ws.fixed_check_out_time
       FROM users u
       LEFT JOIN users m ON m.id = u.reports_to
       LEFT JOIN users d ON d.id = u.direct_reporting2
+      LEFT JOIN work_schedules ws ON ws.id = u.work_schedule_id
       WHERE u.is_active = TRUE AND u.id <> $1
       ORDER BY u.username ASC
     `, [user.id]);
@@ -872,10 +904,18 @@ teamMembers: async (_, __, { user }) => {
     res = await pool.query(`
       SELECT u.*,
              m.username AS manager_name,
-             d.username AS dr2_name
+             d.username AS dr2_name,
+             ws.name AS schedule_name,
+             ws.schedule_type AS work_schedule_type,
+             ws.max_check_in_time,
+             ws.total_daily_hours AS schedule_total_daily_hours,
+             ws.fixed_check_in_time,
+             ws.buffer_minutes,
+             ws.fixed_check_out_time
       FROM users u
       LEFT JOIN users m ON m.id = u.reports_to
       LEFT JOIN users d ON d.id = u.direct_reporting2
+      LEFT JOIN work_schedules ws ON ws.id = u.work_schedule_id
       WHERE u.is_active = TRUE
         AND u.id <> $1
         AND (u.reports_to = $1 OR u.direct_reporting2 = $1)
@@ -923,20 +963,31 @@ teamMembers: async (_, __, { user }) => {
         designation,
         department,
         reportsToId,
-        joiningDate
+        joiningDate,
+        scheduleId
       },
       { user }
     ) => {
       requireAdmin(user);
 
       const hash = await bcrypt.hash(password, 10);
+      let scheduleType = null;
+
+      if (scheduleId) {
+        const scheduleRes = await pool.query(
+          "SELECT schedule_type FROM work_schedules WHERE id = $1 AND is_active = TRUE",
+          [scheduleId]
+        );
+        if (!scheduleRes.rows[0]) throw new Error("Schedule not found");
+        scheduleType = scheduleRes.rows[0].schedule_type;
+      }
 
       const result = await pool.query(
         `INSERT INTO users
-           (username, password, role, employee_number, designation, department, reports_to, joining_date, is_active)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,TRUE)
+           (username, password, role, employee_number, designation, department, reports_to, joining_date, work_schedule_id, schedule_type, is_active)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,TRUE)
          RETURNING id`,
-        [username, hash, role, employeeNumber || null, designation || null, department || null, reportsToId || null, joiningDate || null]
+        [username, hash, role, employeeNumber || null, designation || null, department || null, reportsToId || null, joiningDate || null, scheduleId || null, scheduleType]
       );
 
 
@@ -1663,16 +1714,30 @@ deleteWorkSchedule: async (_, { id }, { user }) => {
   return "Schedule deleted";
 },
 
-updateEmployeeDetails: async (_, { userId, dateOfBirth, scheduleType, biometricId, department }, { user }) => {
+updateEmployeeDetails: async (_, { userId, dateOfBirth, scheduleId, biometricId, department }, { user }) => {
   requireAdmin(user);
+
+  let nextScheduleId = null;
+  let nextScheduleType = null;
+  if (scheduleId) {
+    const scheduleRes = await pool.query(
+      "SELECT id, schedule_type FROM work_schedules WHERE id = $1 AND is_active = TRUE",
+      [scheduleId]
+    );
+    if (!scheduleRes.rows[0]) throw new Error("Schedule not found");
+    nextScheduleId = scheduleRes.rows[0].id;
+    nextScheduleType = scheduleRes.rows[0].schedule_type;
+  }
+
   await pool.query(
     `UPDATE users
      SET date_of_birth = COALESCE($1::date, date_of_birth),
-         schedule_type = COALESCE($2, schedule_type),
-         biometric_id  = COALESCE($3, biometric_id),
-         department    = COALESCE($4, department)
-     WHERE id = $5`,
-    [dateOfBirth || null, scheduleType || null, biometricId || null, department || null, userId]
+         work_schedule_id = $2,
+         schedule_type = $3,
+         biometric_id  = COALESCE($4, biometric_id),
+         department    = COALESCE($5, department)
+     WHERE id = $6`,
+    [dateOfBirth || null, nextScheduleId, nextScheduleType, biometricId || null, department || null, userId]
   );
   return "Employee details updated";
 },

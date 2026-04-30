@@ -33,6 +33,8 @@ import { supabase } from "../../lib/supabaseClient";
 
 /** Supabase Storage bucket name. Must match what you created in the dashboard. */
 const STORAGE_BUCKET = "profile-photos";
+const PHOTO_SYNC_PREFIX = "hrm_profile_photo_updated_";
+const PHOTO_SYNC_EVENT = "hrm:profile-photo-updated";
 
 /**
  * Storage path for a given user.
@@ -40,6 +42,21 @@ const STORAGE_BUCKET = "profile-photos";
  */
 function storagePath(userId) {
   return `avatars/${userId}.jpg`;
+}
+
+function notifyPhotoUpdated(userId) {
+  const stamp = String(Date.now());
+  try {
+    localStorage.setItem(`${PHOTO_SYNC_PREFIX}${userId}`, stamp);
+  } catch {
+    // Ignore storage write failures and still dispatch the in-tab event.
+  }
+
+  window.dispatchEvent(
+    new CustomEvent(PHOTO_SYNC_EVENT, {
+      detail: { userId: String(userId), stamp },
+    })
+  );
 }
 
 // ─── Supabase Storage helpers ─────────────────────────────────────────────────
@@ -175,13 +192,57 @@ export function useProfilePhoto(userId, canEdit = false) {
   useEffect(() => {
     if (!userId) return;
 
-    let cancelled = false;  // prevent state update after unmount
+    let cancelled = false;
 
-    fetchPhotoUrl(userId)
-      .then((url) => { if (!cancelled) setPhotoUrl(url); })
-      .catch(()  => { if (!cancelled) setPhotoUrl(null); });
+    async function refreshPhoto() {
+      try {
+        const url = await fetchPhotoUrl(userId);
+        if (!cancelled) setPhotoUrl(url);
+      } catch {
+        if (!cancelled) setPhotoUrl(null);
+      }
+    }
 
-    return () => { cancelled = true; };
+    function handlePhotoSync(event) {
+      if (String(event?.detail?.userId) === String(userId)) {
+        refreshPhoto();
+      }
+    }
+
+    function handleStorage(event) {
+      if (event.key === `${PHOTO_SYNC_PREFIX}${userId}`) {
+        refreshPhoto();
+      }
+    }
+
+    function handleWindowFocus() {
+      refreshPhoto();
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        refreshPhoto();
+      }
+    }
+
+    refreshPhoto();
+
+    window.addEventListener(PHOTO_SYNC_EVENT, handlePhotoSync);
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Lightweight polling to catch updates made from other active sessions.
+    const intervalId = window.setInterval(refreshPhoto, 15000);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener(PHOTO_SYNC_EVENT, handlePhotoSync);
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.clearInterval(intervalId);
+    };
   }, [userId]);
 
   /** Programmatically opens the OS file picker (or camera sheet on mobile). */
@@ -225,6 +286,7 @@ export function useProfilePhoto(userId, canEdit = false) {
 
       // Step 3 – update React state so the avatar re-renders immediately
       setPhotoUrl(url);
+      notifyPhotoUpdated(userId);
     } catch (err) {
       // Errors from compression or Supabase are surfaced via the error field,
       // which EmployeeProfile forwards to its Toast component.
@@ -247,6 +309,7 @@ export function useProfilePhoto(userId, canEdit = false) {
     try {
       await deletePhotoFromSupabase(userId);
       setPhotoUrl(null);   // triggers the red-initials fallback
+      notifyPhotoUpdated(userId);
     } catch (err) {
       setError(err.message || "Could not delete photo. Please try again.");
     } finally {

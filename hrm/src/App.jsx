@@ -16,14 +16,14 @@ import AdminView from "./components/admin/AdminView";
 import EmployeeView from "./components/employee/EmployeeView";
 
 // ─── Apollo Client Setup ────────────────────────────────────────────────────
-const httpLink = createHttpLink({
-  uri: "https://hrm-system-20o3.onrender.com/graphql", // Deployed server address
-});
-
-
 // const httpLink = createHttpLink({
-//   uri: "http://localhost:4000/graphql", // Local server address
+//   uri: "https://hrm-system-20o3.onrender.com/graphql", // Deployed server address
 // });
+
+
+const httpLink = createHttpLink({
+  uri: "http://localhost:4000/graphql", // Local server address
+});
 
 
 const authLink = setContext((_, { headers }) => {

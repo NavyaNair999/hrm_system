@@ -10,7 +10,13 @@ const EMPLOYEE_BY_ID = gql`
       employeeNumber
       designation
       department
+      scheduleName
       scheduleType
+      maxCheckInTime
+      totalDailyHours
+      fixedCheckInTime
+      bufferMinutes
+      fixedCheckOutTime
     }
   }
 `;
@@ -57,6 +63,7 @@ const TEAM_MEMBERS = gql`
       employeeNumber
       designation
       department
+      scheduleName
       scheduleType
     }
   }
@@ -157,7 +164,78 @@ function getDayName(date) {
   return date.toLocaleDateString("en-IN", { weekday: "long" });
 }
 
-function buildMonthRows(year, monthIndex, attendanceRecords, leaveRequests, holidays) {
+function parseTimeToMinutes(value) {
+  if (!value || !/^\d{2}:\d{2}$/.test(String(value))) return null;
+  const [hours, minutes] = String(value).split(":").map(Number);
+  return (hours * 60) + minutes;
+}
+
+function parseHoursValue(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getIstMinutesFromIso(iso) {
+  const parsed = parseAttendanceTimestamp(iso);
+  if (!parsed) return null;
+  const ist = new Date(parsed.getTime() + 5.5 * 60 * 60 * 1000);
+  return (ist.getUTCHours() * 60) + ist.getUTCMinutes();
+}
+
+function getExpectedHours(employee) {
+  const totalDailyHours = parseHoursValue(employee?.totalDailyHours);
+  if (totalDailyHours !== null) return totalDailyHours;
+
+  const fixedStart = parseTimeToMinutes(employee?.fixedCheckInTime);
+  const fixedEnd = parseTimeToMinutes(employee?.fixedCheckOutTime);
+  if (fixedStart !== null && fixedEnd !== null && fixedEnd > fixedStart) {
+    return (fixedEnd - fixedStart) / 60;
+  }
+
+  return null;
+}
+
+function getRowAttendanceState(row, employee) {
+  const scheduleType = employee?.scheduleType;
+  const expectedHours = getExpectedHours(employee);
+  const checkInMinutes = getIstMinutesFromIso(row.checkIn);
+  const fixedCheckInMinutes = parseTimeToMinutes(employee?.fixedCheckInTime);
+  const totalHours = parseHoursValue(row.totalHours);
+  const isFinishedDay = !!row.checkOut || row.dateKey < getTodayIST();
+
+  const isLateForTimeBased =
+    scheduleType === "time_based" &&
+    checkInMinutes !== null &&
+    fixedCheckInMinutes !== null &&
+    checkInMinutes > fixedCheckInMinutes;
+
+  const isUnderHours =
+    expectedHours !== null &&
+    totalHours !== null &&
+    isFinishedDay &&
+    totalHours < expectedHours;
+
+  const isOnTimeForTimeBased =
+    scheduleType === "time_based" &&
+    checkInMinutes !== null &&
+    fixedCheckInMinutes !== null &&
+    checkInMinutes <= fixedCheckInMinutes;
+
+  const isCompletedHours =
+    expectedHours !== null &&
+    totalHours !== null &&
+    isFinishedDay &&
+    totalHours >= expectedHours;
+
+  return {
+    isOnTimeForTimeBased,
+    isLateForTimeBased,
+    isCompletedHours,
+    isUnderHours,
+  };
+}
+
+function buildMonthRows(year, monthIndex, attendanceRecords, leaveRequests, holidays, employee) {
   const holidayMap = new Map((holidays || []).map((holiday) => [holiday.date, holiday.description || "Holiday"]));
   const attendanceMap = new Map((attendanceRecords || []).map((record) => [record.date, record]));
   const approvedLeaves = (leaveRequests || []).filter((leave) => leave.status === "Approved");
@@ -186,6 +264,16 @@ function buildMonthRows(year, monthIndex, attendanceRecords, leaveRequests, holi
     else if (isSunday) remarks = "Weekly Off";
     else if (!isFuture) remarks = "Absent";
 
+    const attendanceState = getRowAttendanceState(
+      {
+        dateKey,
+        checkIn: attendance?.checkIn || null,
+        checkOut: attendance?.checkOut || null,
+        totalHours,
+      },
+      employee
+    );
+
     rows.push({
       dateKey,
       dayName: getDayName(date),
@@ -198,6 +286,7 @@ function buildMonthRows(year, monthIndex, attendanceRecords, leaveRequests, holi
       isHoliday: !!holidayRemark,
       isSunday,
       isFuture,
+      ...attendanceState,
     });
   }
 
@@ -281,32 +370,35 @@ function AttendanceLog({
   canRaiseAdjustment,
   onAdjust,
 }) {
+  const passStyle = { color: "#16a34a", fontWeight: 700 };
+  const failStyle = { color: "#c0392b", fontWeight: 700 };
+
   return (
     <div className="card">
       <div className="card-title">Attendance Log</div>
-      <div className="table-wrap">
+      <div className="data-table" style={{ overflowX: "auto" }}>
         <table>
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Day</th>
-              <th>Check In</th>
-              <th>Check Out</th>
-              <th>Total Hours</th>
-              <th>Remarks</th>
-              <th>Action</th>
+              <th style={{ textAlign: "center" }}>Date</th>
+              <th style={{ textAlign: "center" }}>Day</th>
+              <th style={{ textAlign: "center" }}>Check In</th>
+              <th style={{ textAlign: "center" }}>Check Out</th>
+              <th style={{ textAlign: "center" }}>Total Hours</th>
+              <th style={{ textAlign: "center" }}>Remarks</th>
+              <th style={{ textAlign: "center" }}>Action</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.dateKey}>
-                <td>{row.dateKey}</td>
-                <td>{row.dayName}</td>
-                <td>{formatLocalTime(row.checkIn)}</td>
-                <td>{formatLocalTime(row.checkOut)}</td>
-                <td>{Number(row.totalHours).toFixed(2)}</td>
-                <td>{row.remarks || "--"}</td>
-                <td>
+                <td style={{ textAlign: "center" }}>{row.dateKey}</td>
+                <td style={{ textAlign: "center" }}>{row.dayName}</td>
+                <td style={{ textAlign: "center", ...(row.isLateForTimeBased ? failStyle : row.isOnTimeForTimeBased ? passStyle : {}) }}>{formatLocalTime(row.checkIn)}</td>
+                <td style={{ textAlign: "center" }}>{formatLocalTime(row.checkOut)}</td>
+                <td style={{ textAlign: "center", ...(row.isUnderHours ? failStyle : row.isCompletedHours ? passStyle : {}) }}>{Number(row.totalHours).toFixed(2)}</td>
+                <td style={{ textAlign: "center" }}>{row.remarks || "--"}</td>
+                <td style={{ textAlign: "center" }}>
                   {canRaiseAdjustment && !row.isFuture && !row.isHoliday ? (
                     <button
                       type="button"
@@ -354,7 +446,7 @@ function AttendanceView({
           <div className="field"><label>Name</label><input value={employee?.username || "--"} disabled style={{ color: "var(--text-primary)" }} /></div>
           <div className="field"><label>Designation</label><input value={employee?.designation || "--"} disabled style={{ color: "var(--text-primary)" }} /></div>
           <div className="field"><label>Department</label><input value={employee?.department || "--"} disabled style={{ color: "var(--text-primary)" }} /></div>
-          <div className="field"><label>Schedule Type</label><input value={employee?.scheduleType || "--"} disabled style={{ color: "var(--text-primary)" }} /></div>
+          <div className="field"><label>Schedule Type</label><input value={employee?.scheduleName || "Custom timing"} disabled style={{ color: "var(--text-primary)" }} /></div>
         </div>
       </div>
 
@@ -483,9 +575,10 @@ export default function EmpAttendance({ currentUser }) {
         selectedMonth,
         selfAttendanceData?.attendanceByUser || [],
         selfLeaveData?.leaveRequestsByUser || [],
-        holidayData?.holidays || []
+        holidayData?.holidays || [],
+        selfData?.employeeById || null
       ),
-    [selectedYear, selectedMonth, selfAttendanceData, selfLeaveData, holidayData]
+    [selectedYear, selectedMonth, selfAttendanceData, selfLeaveData, holidayData, selfData]
   );
 
   const teamRows = useMemo(
@@ -495,9 +588,10 @@ export default function EmpAttendance({ currentUser }) {
         selectedMonth,
         teamAttendanceData?.attendanceByUser || [],
         teamLeaveData?.leaveRequestsByUser || [],
-        holidayData?.holidays || []
+        holidayData?.holidays || [],
+        teamEmployeeData?.employeeById || null
       ),
-    [selectedYear, selectedMonth, teamAttendanceData, teamLeaveData, holidayData]
+    [selectedYear, selectedMonth, teamAttendanceData, teamLeaveData, holidayData, teamEmployeeData]
   );
 
   const todayRecord = (selfAttendanceData?.attendanceByUser || []).find((item) => item.date === todayStr);

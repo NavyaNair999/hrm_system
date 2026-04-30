@@ -23,7 +23,7 @@
 //   • Photo error (e.g. wrong file type) is surfaced via the existing Toast.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState } from "react";
+import { useMemo,useState } from "react";
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
@@ -45,6 +45,8 @@ const GET_EMPLOYEE = gql`
       directReporting2
       joiningDate
       dateOfBirth
+      workScheduleId
+      scheduleName
       scheduleType
       biometricId
       isActive
@@ -64,6 +66,33 @@ const GET_ALL_USERS = gql`
       id
       username
       designation
+    }
+  }
+`;
+
+const SETTINGS_OPTIONS = gql`
+  query SettingsOptions {
+    departments {
+      id
+      name
+      isActive
+    }
+    designations {
+      id
+      name
+      isActive
+    }
+    workSchedules {
+      id
+      name
+      scheduleType
+      workingDays
+      maxCheckInTime
+      totalDailyHours
+      fixedCheckInTime
+      bufferMinutes
+      fixedCheckOutTime
+      isActive
     }
   }
 `;
@@ -90,14 +119,14 @@ const UPDATE_EMPLOYEE_DETAILS = gql`
   mutation UpdateEmployeeDetails(
     $userId: ID!
     $dateOfBirth: String
-    $scheduleType: String
+    $scheduleId: ID
     $biometricId: String
     $department: String
   ) {
     updateEmployeeDetails(
       userId: $userId
       dateOfBirth: $dateOfBirth
-      scheduleType: $scheduleType
+      scheduleId: $scheduleId
       biometricId: $biometricId
       department: $department
     )
@@ -108,6 +137,16 @@ const GET_DEPARTMENTS = gql`
     departments {
       id
       name
+    }
+  }
+`;
+
+const GET_DESIGNATIONS = gql`
+  query GetDesignationsForEdit {
+    designations {
+      id
+      name
+      isActive
     }
   }
 `;
@@ -225,13 +264,20 @@ function GeneralInfoTab({ employee, isAdmin, onSave }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     dateOfBirth: employee.dateOfBirth || "",
-    scheduleType: employee.scheduleType || "",
+    scheduleId: employee.workScheduleId || "",
     biometricId: employee.biometricId || "",
     department: employee.department || "",
   });
 
-
+  const { data: settingsData } = useQuery(SETTINGS_OPTIONS);
   const { data: deptData } = useQuery(GET_DEPARTMENTS, { skip: !isAdmin });
+  const scheduleOptions = useMemo(
+    () => (settingsData?.workSchedules || []).filter((schedule) => schedule.isActive),
+    [settingsData]
+  );
+  const selectedSchedule = scheduleOptions.find(
+    (schedule) => String(schedule.id) === String(form.scheduleId)
+  );
   const [updateDetails, { loading }] = useMutation(UPDATE_EMPLOYEE_DETAILS, {
     refetchQueries: [
       { query: GET_ALL_USERS },
@@ -280,7 +326,7 @@ function GeneralInfoTab({ employee, isAdmin, onSave }) {
                 setEditing(false);
                 setForm({
                   dateOfBirth: employee.dateOfBirth || "",
-                  scheduleType: employee.scheduleType || "",
+                  scheduleId: employee.workScheduleId || "",
                   biometricId: employee.biometricId || "",
                   department: employee.department || "",
                 });
@@ -346,17 +392,28 @@ function GeneralInfoTab({ employee, isAdmin, onSave }) {
           {isAdmin && editing ? (
             <div style={{ padding: "10px 0", borderBottom: "1px solid var(--border-color,#f0f0f0)" }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px" }}>Schedule Type</label>
-              <select style={inputStyle} value={form.scheduleType}
-                onChange={(e) => setForm({ ...form, scheduleType: e.target.value })}>
-                <option value="">Select…</option>
-                <option value="Fixed">Fixed</option>
-                <option value="Flexible">Flexible</option>
-                <option value="Rotational">Rotational</option>
-                <option value="Remote">Remote</option>
+              <select
+                style={inputStyle}
+                value={form.scheduleId}
+                onChange={(event) => setForm((current) => ({ ...current, scheduleId: event.target.value }))}
+              >
+                <option value="">Custom timing</option>
+                {scheduleOptions.map((schedule) => (
+                  <option key={schedule.id} value={schedule.id}>
+                    {schedule.name}
+                  </option>
+                ))}
               </select>
+              {selectedSchedule && (
+                <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
+                  {selectedSchedule.scheduleType === "time_based"
+                    ? `${selectedSchedule.fixedCheckInTime} to ${selectedSchedule.fixedCheckOutTime} with ${selectedSchedule.bufferMinutes || 0} min buffer`
+                    : `Flexible schedule with max check-in ${selectedSchedule.maxCheckInTime} and ${selectedSchedule.totalDailyHours} hrs/day`}
+                </div>
+              )}
             </div>
           ) : (
-            <FieldRow label="Schedule Type" value={employee.scheduleType} />
+            <FieldRow label="Schedule Type" value={employee.scheduleName || "Custom timing"} />
           )}
 
           {isAdmin ? (
@@ -421,9 +478,13 @@ function PositionTab({ employee, allUsers, isAdmin, onSave, refetch }) {
 
   const [changePosition, { loading: cpLoading }] = useMutation(CHANGE_POSITION);
   const [updateReporting, { loading: urLoading }] = useMutation(UPDATE_REPORTING);
+  const { data: designationData } = useQuery(GET_DESIGNATIONS, { skip: !isAdmin });
 
   const history = employee.positionHistory || [];
   const managers = (allUsers || []).filter((u) => u.id !== employee.id);
+  const designationOptions = (designationData?.designations || [])
+    .filter((designation) => designation.isActive)
+    .map((designation) => designation.name);
 
   async function handleChangePosition() {
     if (!posForm.newDesignation || !posForm.effectiveDate || !posForm.reason) {
@@ -558,9 +619,16 @@ function PositionTab({ employee, allUsers, isAdmin, onSave, refetch }) {
       {showChangePosition && (
         <Modal title="Change Position" onClose={() => setShowChangePosition(false)}>
           <label style={labelStyle}>New Designation *</label>
-          <input type="text" style={inputStyle} placeholder="e.g. Senior Engineer"
+          <select
+            style={inputStyle}
             value={posForm.newDesignation}
-            onChange={(e) => setPosForm({ ...posForm, newDesignation: e.target.value })} />
+            onChange={(e) => setPosForm({ ...posForm, newDesignation: e.target.value })}
+          >
+            <option value="">{designationOptions.length ? "Select designation..." : "No designation configured"}</option>
+            {designationOptions.map((designation) => (
+              <option key={designation} value={designation}>{designation}</option>
+            ))}
+          </select>
 
           <label style={labelStyle}>Effective Date *</label>
           <input type="date" style={inputStyle} value={posForm.effectiveDate}

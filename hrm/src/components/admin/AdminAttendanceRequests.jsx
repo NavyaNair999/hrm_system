@@ -26,8 +26,18 @@ const UPDATE_ATTENDANCE_REQUEST_STATUS = gql`
 function parseAttendanceTimestamp(value) {
   if (!value) return null;
   const raw = String(value).trim();
-  const normalized =
-    /(?:Z|[+-]\d{2}:\d{2})$/i.test(raw) || !raw.includes("T") ? raw : `${raw}Z`;
+
+  // Backend request timestamps may arrive either as full ISO values with an
+  // explicit timezone or as plain IST wall-clock strings like 2026-05-01T10:10:00.
+  // If we append "Z" to the latter, the browser treats them as UTC and shifts
+  // the display by +5:30 in production. Zone-less values are therefore treated
+  // as IST explicitly.
+  const normalized = /(?:Z|[+-]\d{2}:\d{2})$/i.test(raw)
+    ? raw
+    : raw.includes("T")
+    ? `${raw}+05:30`
+    : raw;
+
   const parsed = new Date(normalized);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }

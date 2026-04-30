@@ -64,21 +64,16 @@ function ConfirmDialog({ message, onConfirm, onCancel, confirmLabel = "Confirm",
         </div>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button
+            className="btn-secondary"
+            type="button"
             onClick={onCancel}
-            style={{
-              padding: "8px 20px", border: "1px solid #e5c6c6", borderRadius: 8,
-              background: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 500,
-            }}
           >
             Cancel
           </button>
           <button
+            className={danger ? "btn-primary" : "btn-approve"}
+            type="button"
             onClick={onConfirm}
-            style={{
-              padding: "8px 20px", border: "none", borderRadius: 8,
-              background: danger ? "#c0392b" : "#2d6a4f", color: "#fff",
-              cursor: "pointer", fontSize: 13, fontWeight: 600,
-            }}
           >
             {confirmLabel}
           </button>
