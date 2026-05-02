@@ -1348,12 +1348,11 @@ updateLeaveStatus: async (_, { leaveId, status, remark }, { user }) => {
   if (!checkIn && !checkOut) throw new Error("Add a check-in or check-out time");
   if (!reason || !reason.trim()) throw new Error("Reason is required");
 
-  // Helper function to parse time string as IST datetime
+  // Helper function to parse attendance correction time
+  // Frontend sends full ISO strings like "2026-05-01T09:00:00+05:30"
   const parseAsIST = (timeStr) => {
     if (!timeStr) return null;
-    // Assume timeStr is "HH:MM", construct full datetime with IST offset
-    const dateTimeStr = `${date}T${timeStr}:00+05:30`;
-    return new Date(dateTimeStr);
+    return new Date(timeStr);
   };
 
   if (checkIn && checkOut) {
