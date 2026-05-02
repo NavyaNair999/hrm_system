@@ -25,10 +25,6 @@ CREATE TABLE IF NOT EXISTS leaves (
   wfh INTEGER DEFAULT 0
 );
 
--- leave_requests is already created in resolvers.js
-
-
-
 CREATE TABLE IF NOT EXISTS notifications (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id),

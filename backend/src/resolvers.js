@@ -1338,6 +1338,7 @@ updateLeaveStatus: async (_, { leaveId, status, remark }, { user }) => {
     },
 
 //changed by navya on 25/04/26 added mutation for user request on attendance issue(1.1)
+//changed on 2/5/26 to fix timezone issues in attendance correction requests
   requestAttendanceCorrection: async (
   _,
   { date, checkIn, checkOut, reason },
@@ -1347,9 +1348,17 @@ updateLeaveStatus: async (_, { leaveId, status, remark }, { user }) => {
   if (!checkIn && !checkOut) throw new Error("Add a check-in or check-out time");
   if (!reason || !reason.trim()) throw new Error("Reason is required");
 
+  // Helper function to parse time string as IST datetime
+  const parseAsIST = (timeStr) => {
+    if (!timeStr) return null;
+    // Assume timeStr is "HH:MM", construct full datetime with IST offset
+    const dateTimeStr = `${date}T${timeStr}:00+05:30`;
+    return new Date(dateTimeStr);
+  };
+
   if (checkIn && checkOut) {
-    const checkInDate = new Date(checkIn);
-    const checkOutDate = new Date(checkOut);
+    const checkInDate = parseAsIST(checkIn);
+    const checkOutDate = parseAsIST(checkOut);
     if (Number.isNaN(checkInDate.getTime()) || Number.isNaN(checkOutDate.getTime())) {
       throw new Error("Invalid attendance correction time");
     }
@@ -1373,7 +1382,7 @@ updateLeaveStatus: async (_, { leaveId, status, remark }, { user }) => {
     `INSERT INTO attendance_requests 
      (user_id, attendance_date, requested_check_in, requested_check_out, reason)
      VALUES ($1, $2, $3, $4, $5)`,
-    [user.id, date, checkIn, checkOut, reason.trim()]
+    [user.id, date, checkIn ? parseAsIST(checkIn) : null, checkOut ? parseAsIST(checkOut) : null, reason.trim()]
   );
 
   return "Request submitted";
