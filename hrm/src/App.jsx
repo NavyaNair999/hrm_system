@@ -17,7 +17,7 @@ import EmployeeView from "./components/employee/EmployeeView";
 
 // ─── Apollo Client Setup ────────────────────────────────────────────────────
 const httpLink = createHttpLink({
-  uri: "https://hrm-system-20o3.onrender.com/graphql", // Deployed server address
+  uri: "https://hrm-system-okgs.onrender.com/graphql", // Deployed server address
 });
 
 
